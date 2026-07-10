@@ -1,0 +1,5 @@
+# Intentionally empty. EdgeOne hardcodes `pip install -r requirements.txt` as the
+# install step for this project; since it is a pure static site (index.html +
+# data/results.json), no Python packages are needed at build time.
+# For local use (generate_results.py), see requirements-local.txt:
+#   pip install -r requirements-local.txt
