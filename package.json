@@ -1,5 +1,1 @@
-{
-  "scripts": {
-    "build": "pip install -r requirements.txt"
-  }
-}
+{"name": "auction-stock-picker", "version": "1.0.0", "private": true, "scripts": {"build": "pip install -r requirements.txt", "start": "python app_flask.py"}}

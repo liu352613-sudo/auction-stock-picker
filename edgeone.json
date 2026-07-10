@@ -1,0 +1,1 @@
+{"framework": "python", "buildCommand": "pip install -r requirements.txt", "outputDirectory": ".", "startCommand": "python app_flask.py", "env": {"PYTHON_VERSION": "3.11"}}
