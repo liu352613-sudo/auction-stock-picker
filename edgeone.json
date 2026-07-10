@@ -1,1 +1,1 @@
-{"framework": "static", "outputDirectory": ".", "buildCommand": "echo '静态站点：选股数据由外部 Python 环境预生成至 data/results.json'"}
+{"framework": "static", "outputDirectory": ".", "buildCommand": "echo static-site-ready"}

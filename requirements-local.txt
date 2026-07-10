@@ -1,0 +1,9 @@
+# Local Python deps for generate_results.py (runs on your machine, NOT in EdgeOne)
+# EdgeOne hosts a pure static site (index.html + data/results.json)
+akshare>=1.11.0
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Optional: only needed if you deploy app_flask.py to Render
+Flask>=2.0.0
+flask-cors>=3.0.0
