@@ -1,34 +1,7 @@
-# WorkBuddy 内部目录（不要提交）
-.workbuddy/
-
-# Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-.eggs/
-build/
-dist/
-.pytest_cache/
-.mypy_cache/
-
-# 虚拟环境
-.venv/
+*.pyc
 venv/
-env/
-ENV/
-
-# 环境变量 / 密钥
 .env
-*.local
-
-# 日志
+data/
 *.log
-
-# 编辑器 / IDE
-.vscode/
-.idea/
-
-# 系统文件
-.DS_Store
-Thumbs.db
+.workbuddy/
