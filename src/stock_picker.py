@@ -258,8 +258,9 @@ def calc_dynamic_threshold(market_pct):
 def get_stock_pool():
     """获取全市场 A 股实时行情（剔除非主选板块）。
 
-    使用 AkShare 的新浪财经接口 stock_zh_a_spot（对海外服务器更友好，
-    避免东方财富接口在境外被拒）。带重试：重试 3 次、每次间隔 3 秒、模拟浏览器 UA。
+    使用 AkShare 的东方财富接口 stock_zh_a_spot_em（该接口包含「量比」字段，
+    而新浪 stock_zh_a_spot 实际不返回量比列，故改回东方财富）。
+    带重试：重试 3 次、每次间隔 3 秒、模拟浏览器 UA。
     若所有尝试均失败，打印警告并返回空 DataFrame。
     """
     import akshare as ak
@@ -273,13 +274,15 @@ def get_stock_pool():
     last_err = None
     for attempt in range(1, 4):  # 重试 3 次
         try:
-            # stock_zh_a_spot 内部已带新浪 UA；此处额外兜底设置环境变量 UA
+            # stock_zh_a_spot_em 内部已带 UA；此处额外兜底设置环境变量 UA
             import os
             os.environ.setdefault("HTTP_USER_AGENT", headers["User-Agent"])
-            df = ak.stock_zh_a_spot()
+            df = ak.stock_zh_a_spot_em()
             if df is None or len(df) == 0:
-                raise ValueError("新浪接口返回空数据")
-            # 新浪列名：今开 -> 开盘（其余列名与东方财富版一致）
+                raise ValueError("东方财富接口返回空数据")
+            # 打印实际返回列名，便于核对接口字段（尤其量比）
+            log(f"get_stock_pool 实际列名: {list(df.columns)}")
+            # 东方财富列名：今开 -> 开盘（下游统一使用「开盘」）
             if "今开" in df.columns and "开盘" not in df.columns:
                 df = df.rename(columns={"今开": "开盘"})
             df["__code"] = df["代码"].astype(str)
