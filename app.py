@@ -24,10 +24,33 @@ st.title("竞价选股系统")
 st.caption("基于 AkShare 集合竞价数据的 A 股竞价选股器 · 每日 09:26 口径")
 
 if st.button("运行选股", type="primary", use_container_width=False):
+    import akshare as ak
+    import datetime as _dt
+
+    # ---------- 交易日判断 ----------
+    today = _dt.date.today()
+    is_trade_day = True
+    try:
+        cal = ak.tool_trade_date_hist_sina()
+        col = "trade_date" if "trade_date" in cal.columns else cal.columns[0]
+        trade_dates = [str(d)[:10] for d in cal[col].tolist()]
+        is_trade_day = today.strftime("%Y-%m-%d") in trade_dates
+    except Exception:
+        # 日历接口异常时不误杀，按交易日继续
+        pass
+
+    if not is_trade_day:
+        st.warning("今日非交易日，无竞价数据")
+        st.stop()
+
+    # ---------- 选股（含异常保护）----------
     with st.spinner("正在获取集合竞价数据并计算，请稍候…"):
         picker = AuctionStockPicker()
-        # 真实数据走 AkShare；如需离线演示可改为 picker.pick_stocks(demo=True)
-        result = picker.pick_stocks(demo=False)
+        try:
+            result = picker.pick_stocks(demo=False)
+        except Exception as e:
+            st.error(f"数据获取失败：{e}")
+            st.stop()
 
     temp = result["temperature"]
     stocks = result["stocks"]
