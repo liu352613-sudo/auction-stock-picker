@@ -1,1 +1,1 @@
-{"framework": "python", "buildCommand": "pip install -r requirements.txt", "outputDirectory": ".", "startCommand": "python app_flask.py", "env": {"PYTHON_VERSION": "3.11"}}
+{"framework": "static", "outputDirectory": ".", "buildCommand": "echo '静态站点：选股数据由外部 Python 环境预生成至 data/results.json'"}

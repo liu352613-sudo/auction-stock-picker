@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📈 每日竞价选股推荐</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: #1a202c;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .container { max-width: 1080px; margin: 0 auto; }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    }
+    h1 { color: #fff; text-align: center; font-size: 28px; margin-bottom: 8px; }
+    .subtitle { color: rgba(255,255,255,0.85); text-align: center; margin-bottom: 24px; font-size: 14px; }
+    h2 { font-size: 20px; margin-bottom: 16px; color: #2a5298; border-left: 4px solid #2a5298; padding-left: 10px; }
+    .btn {
+      display: block; margin: 0 auto 8px; padding: 14px 36px;
+      font-size: 17px; font-weight: 600; color: #fff; cursor: pointer;
+      background: linear-gradient(135deg, #ff6b6b, #ee5253); border: none; border-radius: 50px;
+      box-shadow: 0 4px 15px rgba(238,82,83,0.4); transition: transform .15s, box-shadow .15s;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(238,82,83,0.5); }
+    .btn:active { transform: translateY(0); }
+    .metrics { display: flex; gap: 16px; flex-wrap: wrap; }
+    .metric { flex: 1; min-width: 160px; background: #f7fafc; border-radius: 12px; padding: 18px; text-align: center; }
+    .metric .label { font-size: 13px; color: #718096; margin-bottom: 6px; }
+    .metric .value { font-size: 26px; font-weight: 700; color: #2a5298; }
+    .stock { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 12px; background: #f7fafc; }
+    .stock .head { font-size: 17px; font-weight: 700; margin-bottom: 12px; color: #1a202c; }
+    .stock .grid { display: flex; gap: 12px; flex-wrap: wrap; }
+    .stock .cell { flex: 1; min-width: 90px; }
+    .stock .cell .l { font-size: 12px; color: #718096; }
+    .stock .cell .v { font-size: 16px; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f7fafc; color: #4a5568; font-weight: 600; }
+    tr:hover td { background: #f7fafc; }
+    .info { background: #ebf8ff; color: #2c5282; padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; }
+    .warn { background: #fffaf0; color: #c05621; padding: 14px 18px; border-radius: 10px; margin: 12px 0; font-size: 15px; font-weight: 500; }
+    .risk { background: #fff5f5; color: #c53030; padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-top: 20px; }
+    .footer { color: rgba(255,255,255,0.8); text-align: center; font-size: 13px; margin-top: 20px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📈 每日竞价选股推荐</h1>
+    <p class="subtitle">基于 AkShare 集合竞价数据的 A 股竞价选股器 · 每日 09:26 口径</p>
+
+    <div class="card">
+      <button class="btn" id="runBtn">🔍 运行选股</button>
+      <div class="info">👆 点击下方「运行选股」按钮获取今日推荐（读取最新预生成结果）</div>
+      <div id="status"></div>
+    </div>
+
+    <div id="result" class="hidden">
+      <div class="card">
+        <h2>🌡️ 市场温度</h2>
+        <div class="metrics" id="tempMetrics"></div>
+      </div>
+
+      <div class="card">
+        <h2>📊 Top 3 精选股票</h2>
+        <div id="top3"></div>
+      </div>
+
+      <div class="card">
+        <h2>📋 全部初筛股票列表</h2>
+        <div id="allList"></div>
+      </div>
+
+      <div class="risk">
+        ⚠️ 风险提示：以上推荐仅基于竞价数据筛选，不构成任何投资建议。市场有风险，投资需谨慎，请结合市场环境与个人风险承受能力审慎决策。
+      </div>
+      <div class="footer" id="footer"></div>
+    </div>
+  </div>
+
+  <script>
+    const DATA_URL = "./data/results.json";
+
+    function showStatus(msg, type) {
+      const el = document.getElementById("status");
+      el.innerHTML = `<div class="${type}">${msg}</div>`;
+    }
+
+    function renderTemperature(temp) {
+      const items = [
+        { label: "综合温度（分数）", value: (temp.total ?? 0).toFixed(1) },
+        { label: "温度等级", value: temp.level ?? "未知" },
+        { label: "建议仓位", value: (temp.position ?? 0) + "%" },
+      ];
+      document.getElementById("tempMetrics").innerHTML = items.map(i => `
+        <div class="metric"><div class="label">${i.label}</div><div class="value">${i.value}</div></div>
+      `).join("");
+    }
+
+    function renderTop3(top3) {
+      if (!top3 || top3.length === 0) {
+        document.getElementById("top3").innerHTML = '<div class="info">今日暂无符合初筛条件的个股。</div>';
+        return;
+      }
+      document.getElementById("top3").innerHTML = top3.map((s, i) => `
+        <div class="stock">
+          <div class="head">${i + 1}. ${s["代码"]} · ${s["名称"]}</div>
+          <div class="grid">
+            <div class="cell"><div class="l">开盘价</div><div class="v">${s["开盘价"]}</div></div>
+            <div class="cell"><div class="l">止盈价 (+5%)</div><div class="v">${s["止盈价"]}</div></div>
+            <div class="cell"><div class="l">止损价 (-3%)</div><div class="v">${s["止损价"]}</div></div>
+            <div class="cell"><div class="l">动能评分</div><div class="v">${s["动能评分"]}</div></div>
+            <div class="cell"><div class="l">量比</div><div class="v">${s["量比"]}</div></div>
+            <div class="cell"><div class="l">买入程度</div><div class="v">${s["买入程度"]}</div></div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderAll(all) {
+      const wrap = document.getElementById("allList");
+      if (!all || all.length === 0) {
+        wrap.innerHTML = '<div class="info">无</div>';
+        return;
+      }
+      const rows = all.map(s => `
+        <tr>
+          <td>${s["代码"]}</td><td>${s["名称"]}</td>
+          <td>${s["买入价"] ?? s["开盘价"] ?? "-"}</td>
+          <td>${s["动能评分"] ?? "-"}</td>
+          <td>${s["量比"] ?? "-"}</td>
+          <td>${s["开盘涨幅%"] ?? "-"}</td>
+        </tr>
+      `).join("");
+      wrap.innerHTML = `
+        <div style="margin-bottom:12px;color:#718096;font-size:14px;">共 ${all.length} 只初筛股票</div>
+        <table>
+          <thead><tr><th>代码</th><th>名称</th><th>开盘价</th><th>评分</th><th>量比</th><th>涨幅%</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    async function loadData() {
+      const btn = document.getElementById("runBtn");
+      btn.disabled = true;
+      showStatus("⏳ 正在加载最新选股结果…", "info");
+      try {
+        const resp = await fetch(DATA_URL + "?t=" + Date.now());
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        const data = await resp.json();
+        renderTemperature(data.temperature || {});
+        renderTop3(data.top3 || []);
+        renderAll(data.all || []);
+        document.getElementById("footer").textContent =
+          `数据来源：${data.data_source || "未知"} ｜ 生成时间：${data.generated_at || "未知"}`;
+        document.getElementById("result").classList.remove("hidden");
+        showStatus("✅ 已加载最新选股结果", "info");
+      } catch (e) {
+        showStatus("⚠️ 无法获取实时数据，请检查网络或稍后重试（" + e.message + "）", "warn");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById("runBtn").addEventListener("click", loadData);
+  </script>
+</body>
+</html>

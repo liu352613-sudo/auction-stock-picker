@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 venv/
 .env
-data/
 *.log
 .workbuddy/
+# 选股结果 JSON 需提交给 EdgeOne 静态站使用（仅忽略可能的本地临时数据目录）
+data/tmp/
