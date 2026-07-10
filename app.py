@@ -3,7 +3,7 @@
 """竞价选股系统 Web 界面（Streamlit）。
 
 运行: streamlit run app.py
-数据源: AkShare 集合竞价（约 09:26）数据。
+数据源: AkShare（新浪财经实时行情）集合竞价（约 09:26）数据。
 """
 
 import sys
@@ -22,7 +22,7 @@ st.set_page_config(page_title="竞价选股系统", layout="wide")
 st.title("📈 每日竞价选股推荐")
 st.info("👆 点击下方「运行选股」按钮获取今日推荐")
 
-st.caption("基于 AkShare 集合竞价数据的 A 股竞价选股器 · 每日 09:26 口径")
+st.caption("基于 AkShare（新浪财经实时行情）集合竞价数据的 A 股竞价选股器 · 每日 09:26 口径")
 
 if "fetch_failed" not in st.session_state:
     st.session_state.fetch_failed = False

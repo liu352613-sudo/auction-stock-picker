@@ -95,7 +95,8 @@ def get_market_temperature():
         # (1) 指数表现 (40 分)
         try:
             # 沪深重要指数 包含 沪深300/上证指数/深证成指/创业板指 等
-            idx = ak.stock_zh_index_spot_em(symbol="沪深重要指数")
+            # 改用新浪财经接口（海外服务器对东方财富常被拒）
+            idx = ak.stock_zh_index_spot_sina()
             targets = {}
             for _, row in idx.iterrows():
                 name = str(row.get("名称", ""))
@@ -117,7 +118,7 @@ def get_market_temperature():
 
         # (2) 涨跌比 (35 分)
         try:
-            spot = ak.stock_zh_a_spot_em()
+            spot = ak.stock_zh_a_spot()
             pct = pd.to_numeric(spot["涨跌幅"], errors="coerce")
             up = int((pct > 0).sum())
             down = int((pct < 0).sum())
@@ -257,63 +258,30 @@ def calc_dynamic_threshold(market_pct):
 def get_stock_pool():
     """获取全市场 A 股实时行情（剔除非主选板块）。
 
-    使用 requests.Session 直连东方财富行情接口，带超时与重试：
-    超时 15s、重试 3 次、每次间隔 3s、模拟浏览器 UA。
+    使用 AkShare 的新浪财经接口 stock_zh_a_spot（对海外服务器更友好，
+    避免东方财富接口在境外被拒）。带重试：重试 3 次、每次间隔 3 秒、模拟浏览器 UA。
     若所有尝试均失败，打印警告并返回空 DataFrame。
     """
-    import requests
+    import akshare as ak
 
     headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
             "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         ),
-        "Referer": "https://quote.eastmoney.com/",
-        "Accept": "application/json, text/plain, */*",
     }
-    url = "https://82.push2.eastmoney.com/api/qt/clist/get"
-    params = {
-        "pn": "1",
-        "pz": "10000",
-        "po": "1",
-        "np": "1",
-        "fltt": "2",
-        "invt": "2",
-        "fid": "f3",
-        "fs": "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23",
-        "fields": "f12,f14,f2,f3,f5,f6,f10,f17",
-    }
-
-    session = requests.Session()
-    session.headers.update(headers)
-
     last_err = None
     for attempt in range(1, 4):  # 重试 3 次
         try:
-            resp = session.get(url, params=params, timeout=15)
-            resp.raise_for_status()
-            data = resp.json()
-            if data.get("rc", 0) not in (0, None) or data.get("data") is None:
-                raise ValueError(f"接口返回异常: rc={data.get('rc')}")
-            diff = data.get("data", {}).get("diff") or []
-            if not diff:
-                raise ValueError("接口返回空列表")
-            rows = []
-            for item in diff:
-                code = str(item.get("f12", "")).strip()
-                if not code:
-                    continue
-                rows.append({
-                    "代码": code,
-                    "名称": str(item.get("f14", "")).strip(),
-                    "最新价": _safe_num(item.get("f2")),
-                    "涨跌幅": _safe_num(item.get("f3")),
-                    "成交量": _safe_num(item.get("f5")),
-                    "成交额": _safe_num(item.get("f6")),
-                    "量比": _safe_num(item.get("f10")),
-                    "开盘": _safe_num(item.get("f17")),
-                })
-            df = pd.DataFrame(rows)
+            # stock_zh_a_spot 内部已带新浪 UA；此处额外兜底设置环境变量 UA
+            import os
+            os.environ.setdefault("HTTP_USER_AGENT", headers["User-Agent"])
+            df = ak.stock_zh_a_spot()
+            if df is None or len(df) == 0:
+                raise ValueError("新浪接口返回空数据")
+            # 新浪列名：今开 -> 开盘（其余列名与东方财富版一致）
+            if "今开" in df.columns and "开盘" not in df.columns:
+                df = df.rename(columns={"今开": "开盘"})
             df["__code"] = df["代码"].astype(str)
             df = df[df["__code"].str.startswith(BOARD_PREFIX)].copy()
             return df
@@ -713,7 +681,7 @@ def get_backtest_universe(scope="all"):
         df = ak.stock_info_a_code_name()
         df = df.rename(columns={df.columns[0]: "代码", df.columns[1]: "名称"})
     except Exception:
-        df = ak.stock_zh_a_spot_em()[["代码", "名称"]]
+        df = ak.stock_zh_a_spot()[["代码", "名称"]]
     df["代码"] = df["代码"].astype(str)
     df = df[df["代码"].str.startswith(BOARD_PREFIX)].copy()
     return df.reset_index(drop=True)
