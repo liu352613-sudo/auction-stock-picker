@@ -255,12 +255,76 @@ def calc_dynamic_threshold(market_pct):
 # 模块 3: 股票池 & 初筛
 # ----------------------------------------------------------------------------
 def get_stock_pool():
-    """获取全市场 A 股实时行情（剔除非主选板块）。"""
-    import akshare as ak
-    df = ak.stock_zh_a_spot_em()
-    df["__code"] = df["代码"].astype(str)
-    df = df[df["__code"].str.startswith(BOARD_PREFIX)].copy()
-    return df
+    """获取全市场 A 股实时行情（剔除非主选板块）。
+
+    使用 requests.Session 直连东方财富行情接口，带超时与重试：
+    超时 15s、重试 3 次、每次间隔 3s、模拟浏览器 UA。
+    若所有尝试均失败，打印警告并返回空 DataFrame。
+    """
+    import requests
+
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Referer": "https://quote.eastmoney.com/",
+        "Accept": "application/json, text/plain, */*",
+    }
+    url = "https://82.push2.eastmoney.com/api/qt/clist/get"
+    params = {
+        "pn": "1",
+        "pz": "10000",
+        "po": "1",
+        "np": "1",
+        "fltt": "2",
+        "invt": "2",
+        "fid": "f3",
+        "fs": "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23",
+        "fields": "f12,f14,f2,f3,f5,f6,f10,f17",
+    }
+
+    session = requests.Session()
+    session.headers.update(headers)
+
+    last_err = None
+    for attempt in range(1, 4):  # 重试 3 次
+        try:
+            resp = session.get(url, params=params, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+            if data.get("rc", 0) not in (0, None) or data.get("data") is None:
+                raise ValueError(f"接口返回异常: rc={data.get('rc')}")
+            diff = data.get("data", {}).get("diff") or []
+            if not diff:
+                raise ValueError("接口返回空列表")
+            rows = []
+            for item in diff:
+                code = str(item.get("f12", "")).strip()
+                if not code:
+                    continue
+                rows.append({
+                    "代码": code,
+                    "名称": str(item.get("f14", "")).strip(),
+                    "最新价": _safe_num(item.get("f2")),
+                    "涨跌幅": _safe_num(item.get("f3")),
+                    "成交量": _safe_num(item.get("f5")),
+                    "成交额": _safe_num(item.get("f6")),
+                    "量比": _safe_num(item.get("f10")),
+                    "开盘": _safe_num(item.get("f17")),
+                })
+            df = pd.DataFrame(rows)
+            df["__code"] = df["代码"].astype(str)
+            df = df[df["__code"].str.startswith(BOARD_PREFIX)].copy()
+            return df
+        except Exception as e:
+            last_err = e
+            log(f"get_stock_pool 第 {attempt}/3 次尝试失败: {e}")
+            if attempt < 3:
+                time.sleep(3)
+
+    log(f"警告: get_stock_pool 全部 3 次尝试失败，返回空列表。最后一次错误: {last_err}")
+    return pd.DataFrame(columns=["代码", "名称", "最新价", "涨跌幅", "成交量", "成交额", "量比", "开盘", "__code"])
 
 
 def get_new_stock_codes(days=NEW_STOCK_DAYS):
