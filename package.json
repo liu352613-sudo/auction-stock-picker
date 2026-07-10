@@ -1,1 +1,5 @@
-{"name": "auction-stock-picker", "version": "1.0.0", "private": true, "scripts": {"build": "echo 'static site'", "start": "python app_flask.py"}}
+{
+  "name": "auction-stock-picker",
+  "version": "1.0.0",
+  "private": true
+}

@@ -1,1 +1,6 @@
-{"framework": "static", "outputDirectory": ".", "buildCommand": "echo static-site-ready"}
+{
+  "framework": "static",
+  "outputDirectory": ".",
+  "buildCommand": "echo static-site-ready",
+  "installCommand": "echo no-dependencies-to-install-for-static-site"
+}
