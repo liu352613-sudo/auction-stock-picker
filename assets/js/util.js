@@ -43,6 +43,36 @@
 
   function clearCache() { _cache = {}; }
 
+  // ----------------------------------------------------------------------
+  // 双模式：实时 API 层
+  // API_BASE 默认同源（""）；若 API 独立部署，可在 index.html 设置
+  //   <script>window.API_BASE = "https://api.your-domain.com";</script>
+  // 前端「静态优先」：静态数据经 fetchJSON("data/...")，实时补充经 fetchAPI("/api/...")。
+  // ----------------------------------------------------------------------
+  var API_BASE = (typeof window !== "undefined" && window.API_BASE) ? window.API_BASE : "";
+
+  // 调试验：关闭实时 API（离线单页预览时设为 false）
+  var API_ENABLED = (typeof window !== "undefined" && window.API_ENABLED !== false);
+
+  function fetchAPI(path, opts) {
+    if (!API_ENABLED) return Promise.reject(new Error("API disabled"));
+    opts = opts || {};
+    var url = API_BASE + path;
+    return fetch(url, { cache: "no-cache" })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      });
+  }
+
+  // 实时连接指示灯（header 中的 #live-indicator）
+  function setLive(state, text) {
+    var el = document.getElementById("live-indicator");
+    if (!el) return;
+    el.className = "live-ind " + (state || "");
+    el.textContent = text || "";
+  }
+
   // 涨跌配色（中国习惯：涨红跌绿）
   function pctClass(v) {
     if (v > 0) return "up";
@@ -87,6 +117,7 @@
 
   global.U = {
     el: el, fetchJSON: fetchJSON, clearCache: clearCache,
+    fetchAPI: fetchAPI, setLive: setLive, API_BASE: API_BASE, API_ENABLED: API_ENABLED,
     pctClass: pctClass, fmtPct: fmtPct, fmtNum: fmtNum, fmtMoney: fmtMoney,
     recoClass: recoClass, tempBadgeClass: tempBadgeClass, escapeHtml: escapeHtml,
   };

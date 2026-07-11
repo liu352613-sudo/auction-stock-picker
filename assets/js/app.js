@@ -59,21 +59,113 @@
     return card;
   }
 
+  function idxCard(ix) {
+    var pct = parseFloat(String(ix.pct).replace("%", ""));
+    return U.el("div", { class: "card index-card" }, [
+      U.el("div", { class: "nm", text: ix.name }),
+      U.el("div", { class: "vl", text: U.fmtNum(ix.val, 2) }),
+      U.el("div", { class: "pc " + U.pctClass(pct), text: ix.pct }),
+    ]);
+  }
   function indicesGrid(indices, live) {
-    var cards = (indices || []).map(function (ix) {
-      var pct = parseFloat(String(ix.pct).replace("%", ""));
-      return U.el("div", { class: "card index-card" }, [
-        U.el("div", { class: "nm", text: ix.name }),
-        U.el("div", { class: "vl", text: U.fmtNum(ix.val, 2) }),
-        U.el("div", { class: "pc " + U.pctClass(pct), text: ix.pct }),
-      ]);
+    return U.el("div", { class: "grid grid-5" }, (indices || []).map(idxCard));
+  }
+
+  // ---------- 双模式：实时刷新层 ----------
+  var liveTimer = null;
+  var apiKnown = null;  // null=未知 true=API可达 false=无API(纯静态)
+
+  function stopLive() {
+    if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+  }
+  function checkApi() {
+    if (apiKnown !== null) return Promise.resolve(apiKnown);
+    return U.fetchAPI("/api/health").then(function () {
+      apiKnown = true; return true;
+    }).catch(function () { apiKnown = false; return false; });
+  }
+  function startLive(fn, intervalMs) {
+    stopLive();
+    checkApi().then(function (ok) {
+      if (ok) U.setLive("connecting", "○ 连接实时行情…");
+      else U.setLive("static", "○ 仅静态数据");
     });
-    return U.el("div", { class: "grid grid-5" }, cards);
+    fn();
+    liveTimer = setInterval(fn, intervalMs || 20000);
+  }
+
+  // 精选页实时刷新：指数 + 个股盘中报价 + 热点板块
+  function refreshPickLive() {
+    if (apiKnown === false) return;
+    U.fetchAPI("/api/market").then(function (d) {
+      var grid = document.getElementById("idx-grid");
+      if (grid) { grid.innerHTML = ""; (d.indices || []).forEach(function (ix) { grid.appendChild(idxCard(ix)); }); }
+      if (d.live) U.setLive("live", "● 实时行情 · 每20s");
+      else if (apiKnown) U.setLive("static", "○ 实时接口(静态回退)");
+    }).catch(function () {});
+    U.fetchAPI("/api/recommend").then(function (d) {
+      var byCode = (d.live && d.live.by_code) || {};
+      Object.keys(byCode).forEach(function (code) {
+        var q = byCode[code];
+        Array.prototype.forEach.call(document.querySelectorAll('[data-code="' + code + '"]'), function (node) {
+          var p = node.querySelector('[data-f="price"]');
+          if (p && q["最新价"] != null) p.textContent = "现价 " + U.fmtNum(q["最新价"], 2);
+          var pc = node.querySelector('[data-f="pct"]');
+          if (pc && q["涨跌幅"] != null) {
+            pc.textContent = U.fmtPct(q["涨跌幅"]);
+            pc.className = (pc.className || "").replace(/\b(up|down|flat)\b/g, "").trim() + " " + U.pctClass(q["涨跌幅"]);
+          }
+        });
+      });
+    }).catch(function () {});
+    U.fetchAPI("/api/hot-sector").then(function (d) {
+      var grid = document.getElementById("hot-sector-grid");
+      if (grid && d.sectors && d.sectors.length) {
+        grid.innerHTML = "";
+        d.sectors.slice(0, 15).forEach(function (s) {
+          var pct = parseFloat(s["涨跌幅"]);
+          grid.appendChild(U.el("div", { class: "card index-card" }, [
+            U.el("div", { class: "nm", text: s["板块名称"] || s["name"] || "-" }),
+            U.el("div", { class: "vl", text: s["领涨股"] || "-" }),
+            U.el("div", { class: "pc " + U.pctClass(pct), text: (pct != null ? pct.toFixed(2) + "%" : "-") }),
+          ]));
+        });
+      }
+    }).catch(function () {});
+  }
+
+  // 详情页实时刷新：实时报价 + 资金流
+  function refreshDetailLive(code) {
+    if (apiKnown === false) return;
+    U.fetchAPI("/api/stock/" + code).then(function (d) {
+      if (d.live && d.live["最新价"] != null) {
+        var priceEl = document.querySelector('[data-k="现价"] .v');
+        if (priceEl) priceEl.textContent = U.fmtNum(d.live["最新价"], 2);
+        var pctEl = document.querySelector('[data-k="涨跌幅"] .v');
+        if (pctEl && d.live["涨跌幅"] != null) {
+          pctEl.textContent = U.fmtPct(d.live["涨跌幅"]);
+          pctEl.className = "v " + U.pctClass(d.live["涨跌幅"]);
+        }
+        U.setLive("live", "● 实时行情 · 每20s");
+      }
+      var box = document.getElementById("fund-flow-box");
+      if (box && d.fund_flow && d.fund_flow.length) {
+        box.innerHTML = "";
+        d.fund_flow.slice().reverse().slice(0, 5).forEach(function (r) {
+          var pct = parseFloat(r["主力净流入-净占比"]);
+          box.appendChild(U.el("div", { class: "ff-row" }, [
+            U.el("span", { class: "ff-d", text: String(r["日期"]).slice(0, 10) }),
+            U.el("span", { class: "ff-v " + U.pctClass(parseFloat(r["主力净流入-净额"])), text: U.fmtNum(r["主力净流入-净额"] / 1e8, 2) + "亿" }),
+            U.el("span", { class: "ff-p " + U.pctClass(pct), text: (pct != null ? pct.toFixed(2) + "%" : "-") }),
+          ]));
+        });
+      }
+    }).catch(function () {});
   }
 
   function pickCard(s) {
     var pct = s["涨跌幅"] || 0;
-    return U.el("div", { class: "card pick-card", onclick: function () { go("/detail/" + s["代码"]); } }, [
+    return U.el("div", { class: "card pick-card", "data-code": s["代码"], onclick: function () { go("/detail/" + s["代码"]); } }, [
       U.el("div", { class: "top" }, [
         U.el("div", {}, [
           U.el("div", { class: "nm", text: s["名称"] }),
@@ -82,8 +174,8 @@
         U.el("div", { class: "score-ring " + (s["评分"] >= 80 ? "up" : (s["评分"] >= 60 ? "" : "down")), text: s["评分"].toFixed(1) }),
       ]),
       U.el("div", { class: "price" }, [
-        U.el("span", { text: "现价 " + U.fmtNum(s["现价"], 2) }),
-        U.el("span", { class: U.pctClass(pct), text: U.fmtPct(pct) }),
+        U.el("span", { "data-f": "price", text: "现价 " + U.fmtNum(s["现价"], 2) }),
+        U.el("span", { class: U.pctClass(pct), "data-f": "pct", text: U.fmtPct(pct) }),
       ]),
       U.el("div", { class: "levels" }, [
         U.el("span", { class: "reco " + U.recoClass(s["买入程度"]), text: s["建议"] || s["买入程度"] }),
@@ -106,15 +198,15 @@
     ]));
     var rows = stocks.map(function (s) {
       var pct = s["涨跌幅"] || 0;
-      return U.el("tr", {}, [
+      return U.el("tr", { "data-code": s["代码"] }, [
         U.el("td", { class: "l rank", text: "#" + s["排名"] }),
         U.el("td", { class: "l" }, [
           U.el("div", { class: "stk", text: s["名称"] }),
           U.el("small", { text: s["代码"] }),
         ]),
         U.el("td", { class: "l" }, [U.el("span", { class: "sector-tag", text: s["板块"] || "-" })]),
-        U.el("td", { text: U.fmtNum(s["现价"], 2) }),
-        U.el("td", { class: U.pctClass(pct), text: U.fmtPct(pct) }),
+        U.el("td", { "data-f": "price", text: U.fmtNum(s["现价"], 2) }),
+        U.el("td", { class: U.pctClass(pct), "data-f": "pct", text: U.fmtPct(pct) }),
         U.el("td", { text: s["评分"].toFixed(1) }),
         U.el("td", {}, [U.el("span", { class: "reco " + U.recoClass(s["买入程度"]), text: s["建议"] || s["买入程度"] })]),
         U.el("td", { class: "l degree", text: s["买入程度"] || "-" }),
@@ -138,7 +230,14 @@
       // 指数
       wrap.appendChild(U.el("div", { class: "section" }, [
         U.el("div", { class: "section-title", text: "实时指数" }),
-        indicesGrid(res.indices, res.indices_live),
+        (function () { var g = indicesGrid(res.indices, res.indices_live); g.id = "idx-grid"; return g; })(),
+      ]));
+      // 热点板块（实时补充）
+      wrap.appendChild(U.el("div", { class: "section" }, [
+        U.el("div", { class: "section-title", text: "热点板块（盘中实时）" }),
+        U.el("div", { class: "grid grid-5", id: "hot-sector-grid" }, [
+          U.el("div", { class: "muted small", text: "等待实时数据…（静态模式不展示）" }),
+        ]),
       ]));
       // Top3
       wrap.appendChild(U.el("div", { class: "section" }, [
@@ -152,6 +251,7 @@
         U.el("div", { class: "note", text: "策略：集合竞价量比≥阈值 + 开盘涨幅动态区间 + 动能评分排序，T+1 次日开盘卖出。明细见个股详情。" }),
       ]));
       app.appendChild(wrap);
+      startLive(refreshPickLive, 20000);
     }).catch(function (e) {
       app.innerHTML = '<div class="error">加载选股数据失败：' + U.escapeHtml(e.message) + '<br>请确认 data/results.json 已生成。</div>';
     });
@@ -198,7 +298,7 @@
     }
     var statsRow = U.el("div", { class: "detail-stats" },
       statsData.map(function (kv) {
-        return U.el("div", { class: "stat" }, [
+        return U.el("div", { class: "stat", "data-k": kv[0] }, [
           U.el("div", { class: "k", text: kv[0] }),
           U.el("div", { class: "v " + (kv[0] === "涨跌幅" ? U.pctClass(stock["涨跌幅"] || 0) : ""), text: kv[1] }),
         ]);
@@ -250,8 +350,16 @@
       kbox,
       U.el("div", { class: "note", text: "红涨绿跌（中国习惯）。数据为演示/历史区间，仅供研究。" }),
     ]));
+    // 实时资金流（盘中，由 /api/stock/{code} 补充；静态模式为空）
+    wrap.appendChild(U.el("div", { class: "section" }, [
+      U.el("div", { class: "section-title", text: "主力资金流（盘中实时）" }),
+      U.el("div", { class: "ff-box", id: "fund-flow-box" }, [
+        U.el("div", { class: "muted small", text: "等待实时数据…（静态模式不展示）" }),
+      ]),
+    ]));
     app.appendChild(wrap);
     drawK(code, kline, 9999, canvas);
+    startLive(function () { refreshDetailLive(code); }, 20000);
   }
 
   function drawK(code, kline, n, canvas) {

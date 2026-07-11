@@ -246,3 +246,30 @@ tbody tr:hover { background: rgba(47,129,247,.06); }
   .topbar { flex-wrap: wrap; gap: 10px; }
   .nav { margin-left: 0; width: 100%; }
 }
+
+/* ---------- 双模式：实时指示灯 ---------- */
+.live-ind {
+  display: inline-flex; align-items: center;
+  font-size: 12px; font-weight: 600;
+  padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--border); margin-right: 8px;
+  background: var(--bg-soft); color: var(--text-mute);
+}
+.live-ind.live { color: #2ebd85; border-color: rgba(46,189,133,.5); background: rgba(46,189,133,.08); }
+.live-ind.connecting { color: #f0b90b; border-color: rgba(240,185,11,.5); background: rgba(240,185,11,.08); }
+.live-ind.static { color: var(--text-mute); }
+.live-ind::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%;
+  margin-right: 6px; background: currentColor;
+}
+
+/* ---------- 主力资金流 ---------- */
+.ff-box { display: flex; flex-direction: column; gap: 6px; }
+.ff-row {
+  display: grid; grid-template-columns: 110px 1fr 90px; align-items: center;
+  padding: 8px 10px; border-radius: 8px; background: var(--bg-soft);
+  border: 1px solid var(--border); font-size: 13px;
+}
+.ff-d { color: var(--text-mute); }
+.ff-v { font-weight: 700; text-align: right; }
+.ff-p { text-align: right; font-weight: 600; }
