@@ -28,6 +28,7 @@ from src.stock_picker import (
     _fetch_stock_hist_robust,
     _bt_demo_hist,
 )
+from generate_snapshot import snapshot
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(ROOT, "data")
@@ -203,21 +204,6 @@ def build_payload(result, params_dict):
     }
 
 
-def update_history_index(date_str, entry):
-    """维护 data/history_index.json（按日期降序，同日去重）。"""
-    os.makedirs(DATA_DIR, exist_ok=True)
-    idx_path = os.path.join(DATA_DIR, "history_index.json")
-    idx = []
-    if os.path.exists(idx_path):
-        try:
-            idx = json.load(open(idx_path, encoding="utf-8"))
-        except Exception:
-            idx = []
-    idx = [e for e in idx if e.get("date") != date_str]
-    idx.insert(0, entry)
-    json.dump(idx, open(idx_path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-
-
 def main():
     parser = argparse.ArgumentParser(description="生成选股结果及配套数据 JSON")
     parser.add_argument("--demo", action="store_true", help="使用内置样例数据（不触网）")
@@ -250,22 +236,10 @@ def main():
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
 
-    # 历史推荐索引
+    # 历史推荐快照：写入 data/history/YYYY-MM-DD.json 并维护 history_index.json
+    # 每次生成结果都刷新「当日」快照（force），无论是否已存在
     today = datetime.date.today().isoformat()
-    scores = [s["评分"] for s in payload["stocks"]]
-    avg_score = round(sum(scores) / len(scores), 1) if scores else 0
-    entry = {
-        "date": today,
-        "count": payload["count"],
-        "temperature": payload["temperature"]["total"],
-        "level": payload["temperature"]["level"],
-        "avg_score": avg_score,
-        "top1": payload["stocks"][0]["名称"] if payload["stocks"] else "",
-        "top1_code": payload["stocks"][0]["代码"] if payload["stocks"] else "",
-        "data_source": payload["data_source"],
-        "params_tuned": bool(params_full.get("tuned_at")),
-    }
-    update_history_index(today, entry)
+    snapshot(out_path, today, force=True)
 
     print(f"已生成: {out_path}")
     print(f"  数据来源: {payload['data_source']}")
