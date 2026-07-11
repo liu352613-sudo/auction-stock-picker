@@ -47,6 +47,48 @@ RECO_MAP = {
 }
 
 
+# 主要指数（用于顶部指数栏），顺序即展示顺序
+INDEX_WANTED = ["上证指数", "深证成指", "创业板指", "科创50", "沪深300"]
+# 联网失败时的回退数据（仅保证页面不空，标记 live=False）
+INDEX_FALLBACK = [
+    {"name": "上证指数", "code": "000001", "val": 3996.16, "diff": -40.43, "pct": "-1.00%"},
+    {"name": "深证成指", "code": "399001", "val": 15046.67, "diff": -352.06, "pct": "-2.29%"},
+    {"name": "创业板指", "code": "399006", "val": 3842.73, "diff": -175.44, "pct": "-4.37%"},
+    {"name": "科创50", "code": "000688", "val": 2064.98, "diff": -120.85, "pct": "-5.53%"},
+    {"name": "沪深300", "code": "000300", "val": 4780.79, "diff": -95.52, "pct": "-1.96%"},
+]
+
+
+def fetch_indices():
+    """实时拉取主要指数行情（akshare 东财接口）。
+
+    返回 (list, live) —— live=True 表示真实数据，False 表示回退数据。
+    联网失败或接口异常时回退到内置常数，保证页面不空。
+    """
+    try:
+        import akshare as ak
+        df = ak.stock_zh_index_spot_em()
+        name_col = "指数名称" if "指数名称" in df.columns else df.columns[1]
+        pool = {}
+        for _, r in df.iterrows():
+            nm = str(r[name_col])
+            if nm in INDEX_WANTED:
+                pool[nm] = {
+                    "name": nm,
+                    "code": str(r.get("指数代码", "")),
+                    "val": round(float(r.get("最新价", 0)), 2),
+                    "diff": round(float(r.get("涨跌额", 0)), 2),
+                    "pct": f"{float(r.get('涨跌幅', 0)):+.2f}%",
+                }
+        rows = [pool[n] for n in INDEX_WANTED if n in pool]
+        if rows:
+            return rows, True
+        print("  [warn] 未匹配到目标指数，使用内置回退数据。")
+    except Exception as e:
+        print(f"  [warn] 指数行情拉取失败，使用内置回退数据: {e}")
+    return [dict(x) for x in INDEX_FALLBACK], False
+
+
 def build_payload(result):
     stocks = result["stocks"]
 
@@ -112,6 +154,11 @@ def main():
     result = picker.pick_stocks(demo=args.demo)
     payload = build_payload(result)
 
+    # 实时拉取指数行情，写入 JSON 供前端展示
+    indices, idx_live = fetch_indices()
+    payload["indices"] = indices
+    payload["indices_live"] = idx_live
+
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
 
@@ -119,6 +166,7 @@ def main():
     print(f"  数据来源: {payload['data_source']}")
     print(f"  生成时间: {payload['generated_at']}")
     print(f"  候选数量: {payload['count']}  | Top3: {len(payload['top3'])}")
+    print(f"  指数行情: {'实时(akshare)' if idx_live else '回退(内置)'}  | {len(indices)} 个")
 
 
 if __name__ == "__main__":

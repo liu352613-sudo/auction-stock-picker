@@ -280,7 +280,7 @@ function renderSidebar(){
 }
 
 // ---- index bar (指数栏) ----
-const IDX_BAR_DATA=[
+const IDX_BAR_FALLBACK=[
   {name:"上证指数",val:3996.16,diff:-40.43,pct:"-1.00%"},
   {name:"深证成指",val:15046.67,diff:-352.06,pct:"-2.29%"},
   {name:"创业板指",val:3842.73,diff:-175.44,pct:"-4.37%"},
@@ -288,12 +288,13 @@ const IDX_BAR_DATA=[
   {name:"沪深300",val:4780.79,diff:-95.52,pct:"-1.96%"},
 ];
 function renderIdxBar(){
-  document.getElementById("idxBar").innerHTML=IDX_BAR_DATA.map(d=>{
+  const data=(appData&&appData.indices)||IDX_BAR_FALLBACK;
+  document.getElementById("idxBar").innerHTML=data.map(d=>{
     const cls=d.diff>=0?"idx-up":"idx-down";
     return`<div class="idx-card">
       <div class="idx-name">${d.name}</div>
-      <div class="idx-val">${d.val.toFixed(2)}</div>
-      <div class="idx-diff ${cls}">${d.diff>=0?"+":""}${d.diff.toFixed(2)} ${d.pct}</div>
+      <div class="idx-val">${Number(d.val).toFixed(2)}</div>
+      <div class="idx-diff ${cls}">${Number(d.diff)>=0?"+":""}${Number(d.diff).toFixed(2)} ${d.pct}</div>
     </div>`;
   }).join("");
 }
@@ -417,6 +418,7 @@ async function loadData(){
     if(!r.ok)throw new Error("HTTP "+r.status);
     const d=await r.json();appData=d;
     renderMktStrip(document.getElementById("mktStrip"),d);
+    renderIdxBar();
     renderNpcsTable(d);
     if(currentPage==="picker")renderPicker(d);
     showStatus("","");
