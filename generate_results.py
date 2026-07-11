@@ -202,6 +202,9 @@ def build_payload(result, params_dict):
         "params": params_dict,
         "temperature": temperature,
         "stocks": stocks_list,
+        # 规范推荐列表字段：首页严格以此为准（优先 recommendations，回退 stocks）。
+        # 这是「真实推荐列表」的唯一来源，绝不与 Mock/Demo/Fallback 混用。
+        "recommendations": stocks_list,
         "top3": top3,
         "all": stocks_list,
         "count": len(stocks_list),
@@ -251,12 +254,22 @@ def main():
     snapshot(out_path, eff_date, force=True)
 
     print(f"已生成: {out_path}")
-    print(f"  数据来源: {payload['data_source']}")
-    print(f"  生成时间: {payload['generated_at']}")
-    print(f"  候选数量: {payload['count']}  | Top3: {len(payload['top3'])}")
-    print(f"  K线生成: {kl_count} 只")
-    print(f"  指数行情: {'实时(akshare)' if idx_live else '回退(内置)'}  | {len(indices)} 个")
-    print(f"  生效参数: {'已调参(' + str(params_full.get('tuned_at')) + ')' if params_full.get('tuned_at') else '出厂默认'}")
+    print(f"  ── 数据来源与数量校验 ──")
+    src = payload["data_source"]
+    is_demo = ("DEMO" in src) or bool(params_full.get("demo"))
+    print(f"  数据来源        : {src}")
+    print(f"  是否示例/DEMO   : {'是 ⚠️（非真实推荐，请勿用于生产展示）' if is_demo else '否（真实数据）'}")
+    print(f"  推荐数量        : {payload['count']} 只（recommendations 字段）")
+    print(f"  生效交易日      : {payload['trade_date']}")
+    print(f"  生成时间        : {payload['generated_at']}")
+    if payload["count"]:
+        print(f"  推荐列表        : " + "、".join(
+            f"{s['名称']}({s['代码']})·{s['评分']}" for s in payload["recommendations"]))
+    else:
+        print(f"  推荐列表        : （空）将在首页明确提示「当前推荐数据为空」")
+    print(f"  K线生成         : {kl_count} 只")
+    print(f"  指数行情        : {'实时(akshare)' if idx_live else '回退(内置)'}  | {len(indices)} 个")
+    print(f"  生效参数        : {'已调参(' + str(params_full.get('tuned_at')) + ')' if params_full.get('tuned_at') else '出厂默认'}")
 
 
 if __name__ == "__main__":

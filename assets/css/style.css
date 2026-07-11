@@ -230,6 +230,13 @@ tbody tr:hover { background: rgba(47,129,247,.06); }
 .btn.primary:hover { filter: brightness(1.08); }
 .note { font-size: 12px; color: var(--text-mute); margin-top: 8px; }
 
+/* ---------- 空数据状态 ---------- */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-mute); }
+.empty-state.inline { padding: 20px; font-size: 13px; }
+.empty-icon { font-size: 36px; opacity: 0.35; margin-bottom: 8px; }
+.empty-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.empty-sub { font-size: 13px; line-height: 1.5; max-width: 420px; margin: 0 auto; }
+
 /* ---------- 列表/历史 ---------- */
 .list { display: flex; flex-direction: column; gap: 10px; }
 .list-item {

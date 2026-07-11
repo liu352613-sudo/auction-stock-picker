@@ -206,11 +206,9 @@
           }
         });
       });
-      // 时效提示 + 盘中实时评分重算（与盘前/回测同源）
+      // 时效提示（数据日期口径；首页评分严格沿用 results.json，不重算/覆盖）
       updateFreshness(d);
-      var ls = d.live_scores || {};
-      Object.keys(ls).forEach(function (code) { applyLiveScore(code, ls[code]); });
-      if (d.live_score_flag) U.setLive("live", "● 实时行情 · 每20s");
+      if (d.live_flag) U.setLive("live", "● 实时行情 · 每20s");
       else if (apiKnown) U.setLive("static", "○ 实时接口(静态回退)");
     }).catch(function () {});
     U.fetchAPI("/api/hot-sector").then(function (d) {
@@ -353,24 +351,6 @@
     return U.el("div", { class: "score-breakdown" }, rows.concat([riskTag]));
   }
 
-  // 将 API 实时重算得到的 live_score 应用到列表/卡片中的评分与 delta 标记。
-  function applyLiveScore(code, v) {
-    var scoreEls = document.querySelectorAll('[data-code="' + code + '"] [data-f="score"]');
-    Array.prototype.forEach.call(scoreEls, function (el) {
-      el.textContent = Number(v.score).toFixed(1);
-      if (el.classList.contains("score-ring")) {
-        el.className = ("score-ring " + (v.score >= 80 ? "up" : (v.score >= 60 ? "" : "down"))).trim();
-      }
-    });
-    var deltaEls = document.querySelectorAll('[data-code="' + code + '"] [data-f="delta"]');
-    Array.prototype.forEach.call(deltaEls, function (el) {
-      if (Math.abs(v.delta) < 0.05) { el.textContent = ""; el.className = "live-delta"; return; }
-      var up = v.delta > 0;
-      el.textContent = (up ? "▲ +" : "▼ ") + Number(v.delta).toFixed(2);
-      el.className = "live-delta " + (up ? "up" : "down");
-    });
-  }
-
   // 首页时效提示：数据日期 + 今日/最近交易日口径，二者同时展示。
   function updateFreshness(d) {
     var bar = document.getElementById("freshness-bar");
@@ -418,15 +398,36 @@
           U.el("div", { class: "muted small", text: "等待实时数据…（静态模式不展示）" }),
         ]),
       ]));
-      // Top3
-      wrap.appendChild(U.el("div", { class: "section" }, [
-        U.el("div", { class: "section-title", text: "今日精选 Top3" }),
-        U.el("div", { class: "grid grid-3" }, (res.top3 || []).map(pickCard)),
-      ]));
+      // 规范推荐列表：严格以 results.json 的 recommendations 为准（回退 stocks）。
+      // 绝不接入 Mock/Demo/Fallback，也不按实时 API 重新排序；为空时明确提示。
+      var reco = (res.recommendations && res.recommendations.length)
+        ? res.recommendations
+        : (res.stocks || []);
+      var top3 = (res.top3 && res.top3.length) ? res.top3 : reco.slice(0, 3);
+      var allCandidates = (res.stocks && res.stocks.length) ? res.stocks : reco;
+
+      if (!reco.length) {
+        // 空数据：明确提示，绝不自动替换为示例股票（平安银行/宁德时代/比亚迪等）
+        wrap.appendChild(U.el("div", { class: "section" }, [
+          U.el("div", { class: "section-title", text: "今日精选 Top3" }),
+          U.el("div", { class: "empty-state" }, [
+            U.el("div", { class: "empty-icon", text: "∅" }),
+            U.el("div", { class: "empty-title", text: "当前推荐数据为空" }),
+            U.el("div", { class: "empty-sub", text: "推荐日期 " + (res.trade_date || "-") + " 暂无符合条件的标的。请运行 generate_results.py 生成真实推荐，系统不会以示例数据替代。" }),
+          ]),
+        ]));
+      } else {
+        // Top3
+        wrap.appendChild(U.el("div", { class: "section" }, [
+          U.el("div", { class: "section-title", text: "今日精选 Top3" }),
+          U.el("div", { class: "grid grid-3" }, top3.map(pickCard)),
+        ]));
+      }
       // 全部
       wrap.appendChild(U.el("div", { class: "section" }, [
-        U.el("div", { class: "section-title", text: "全部候选（" + (res.count || 0) + " 只）" }),
-        stocksTable(res.stocks || [], true),
+        U.el("div", { class: "section-title", text: "全部候选（" + (res.count || allCandidates.length || 0) + " 只）" }),
+        reco.length ? stocksTable(allCandidates, true)
+          : U.el("div", { class: "empty-state inline", text: "当前推荐数据为空" }),
         U.el("div", { class: "note", text: "策略：集合竞价量比≥阈值 + 开盘涨幅动态区间 + 动能评分排序，T+1 次日开盘卖出。明细见个股详情。" }),
       ]));
       app.appendChild(wrap);

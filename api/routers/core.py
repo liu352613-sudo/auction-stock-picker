@@ -169,15 +169,6 @@ def api_recommend():
     out["data_freshness"] = "today" if out["trade_date"] == eff_str else "previous"
     out["live"] = live
     out["live_flag"] = live_flag
-    # 盘中实时评分：用同一评分引擎对实时报价重算（与盘前/回测同源）
-    live_scores = {}
-    if quotes:
-        try:
-            live_scores = _recompute_live_scores(shown, quotes, _params_from_payload(shown))
-        except Exception:
-            live_scores = {}
-    out["live_scores"] = live_scores
-    out["live_score_flag"] = bool(live_scores)
     out["updated_at"] = _now()
     return out
 
