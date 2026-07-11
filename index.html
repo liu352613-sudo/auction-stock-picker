@@ -3,175 +3,431 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>📈 每日竞价选股推荐</title>
+  <title>竞价选股 - 每日策略推荐</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-      color: #1a202c;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
       min-height: 100vh;
-      padding: 24px;
+      font-size: 14px;
     }
-    .container { max-width: 1080px; margin: 0 auto; }
-    .card {
+
+    /* ===== Top Header Bar ===== */
+    .topbar {
       background: #fff;
-      border-radius: 16px;
-      padding: 24px;
-      margin-bottom: 20px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+      border-bottom: 1px solid #e8e8e8;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
     }
-    h1 { color: #fff; text-align: center; font-size: 28px; margin-bottom: 8px; }
-    .subtitle { color: rgba(255,255,255,0.85); text-align: center; margin-bottom: 24px; font-size: 14px; }
-    h2 { font-size: 20px; margin-bottom: 16px; color: #2a5298; border-left: 4px solid #2a5298; padding-left: 10px; }
-    .btn {
-      display: block; margin: 0 auto 8px; padding: 14px 36px;
-      font-size: 17px; font-weight: 600; color: #fff; cursor: pointer;
-      background: linear-gradient(135deg, #ff6b6b, #ee5253); border: none; border-radius: 50px;
-      box-shadow: 0 4px 15px rgba(238,82,83,0.4); transition: transform .15s, box-shadow .15s;
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 18px; font-weight: 700; color: #c0392b;
     }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(238,82,83,0.5); }
-    .btn:active { transform: translateY(0); }
-    .metrics { display: flex; gap: 16px; flex-wrap: wrap; }
-    .metric { flex: 1; min-width: 160px; background: #f7fafc; border-radius: 12px; padding: 18px; text-align: center; }
-    .metric .label { font-size: 13px; color: #718096; margin-bottom: 6px; }
-    .metric .value { font-size: 26px; font-weight: 700; color: #2a5298; }
-    .stock { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 12px; background: #f7fafc; }
-    .stock .head { font-size: 17px; font-weight: 700; margin-bottom: 12px; color: #1a202c; }
-    .stock .grid { display: flex; gap: 12px; flex-wrap: wrap; }
-    .stock .cell { flex: 1; min-width: 90px; }
-    .stock .cell .l { font-size: 12px; color: #718096; }
-    .stock .cell .v { font-size: 16px; font-weight: 600; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-    th { background: #f7fafc; color: #4a5568; font-weight: 600; }
-    tr:hover td { background: #f7fafc; }
-    .info { background: #ebf8ff; color: #2c5282; padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; }
-    .warn { background: #fffaf0; color: #c05621; padding: 14px 18px; border-radius: 10px; margin: 12px 0; font-size: 15px; font-weight: 500; }
-    .risk { background: #fff5f5; color: #c53030; padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-top: 20px; }
-    .footer { color: rgba(255,255,255,0.8); text-align: center; font-size: 13px; margin-top: 20px; }
-    .hidden { display: none; }
+    .brand-icon {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      color: #fff; font-size: 16px; font-weight: bold;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .indices { display: flex; gap: 20px; }
+    .idx-item { text-align: right; }
+    .idx-name { font-size: 12px; color: #999; }
+    .idx-val { font-size: 15px; font-weight: 700; }
+    .idx-chg { font-size: 12px; font-weight: 600; margin-left: 4px; }
+    .up-color { color: #e74c3c; }
+    .down-color { color: #27ae60; }
+
+    /* ===== Main Layout ===== */
+    .main-layout {
+      display: flex;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+      gap: 20px;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 180px; flex-shrink: 0;
+      background: #fff; border-radius: 10px;
+      padding: 14px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.06); align-self: flex-start;
+      position: sticky; top: 64px;
+    }
+    .side-item {
+      padding: 11px 18px;
+      cursor: pointer; font-size: 13.5px; color: #555;
+      display: flex; justify-content: space-between; align-items: center;
+      transition: all .15s; border-left: 3px solid transparent;
+    }
+    .side-item:hover { background: #f7f8fa; color: #222; }
+    .side-item.active { background: #fef6f5; color: #c0392b; border-left-color: #c0392b; font-weight: 600; }
+    .side-badge {
+      background: #eee; color: #888; font-size: 11px; padding: 1px 7px;
+      border-radius: 10px; font-weight: 500;
+    }
+    .side-item.active .side-badge { background: #fdd; color: #c0392b; }
+
+    /* Content area */
+    .content { flex: 1; min-width: 0; }
+
+    /* Page title */
+    .page-title {
+      font-size: 22px; font-weight: 700; margin-bottom: 18px; color: #1a1a2e;
+    }
+
+    /* Tab bar */
+    .tab-bar {
+      display: flex; gap: 0; margin-bottom: 18px; background: #fff;
+      border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .tab {
+      flex: 1; padding: 12px 0; text-align: center; font-size: 14px; font-weight: 500;
+      cursor: pointer; color: #666; border: none; background: #fff;
+      transition: all .2s; position: relative;
+    }
+    .tab:hover { color: #333; background: #fafafa; }
+    .tab.active { color: #c0392b; font-weight: 700; background: #fff; }
+    .tab.active::after {
+      content:''; position:absolute; bottom:0; left:0; right:0;
+      height: 3px; background: #c0392b; border-radius: 3px 3px 0 0;
+    }
+
+    /* Strategy header info */
+    .strategy-info {
+      background: #fff; border-radius: 10px; padding: 14px 18px;
+      margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;
+    }
+    .strat-name { font-size: 17px; font-weight: 700; color: #1a1a2e; }
+    .strat-meta { font-size: 12.5px; color: #888; margin-top: 2px; }
+    .refresh-btn {
+      padding: 5px 14px; font-size: 12.5px; border: 1px solid #d9d9d9;
+      border-radius: 6px; background: #fff; color: #555; cursor: pointer;
+      transition: all .15s; white-space: nowrap;
+    }
+    .refresh-btn:hover { border-color: #c0392b; color: #c0392b; }
+
+    /* Stock Card Grid */
+    .stock-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 1100px) { .stock-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 720px)  { .stock-grid { grid-template-columns: 1fr; } }
+
+    .stock-card {
+      background: #fff; border-radius: 10px;
+      padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      transition: transform .15s, box-shadow .15s; border: 1px solid #eee;
+    }
+    .stock-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.08); border-color: #ddd; }
+
+    .card-head {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+    }
+    .stock-name { font-size: 15.5px; font-weight: 700; color: #1a1a2e; }
+    .stock-code { font-size: 12px; color: #aaa; font-weight: 400; margin-left: 6px; }
+
+    .card-price-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+    .price-big { font-size: 26px; font-weight: 700; line-height: 1; }
+    .pct-chg { font-size: 14px; font-weight: 700; }
+
+    .card-detail-row {
+      display: flex; gap: 20px; font-size: 12.5px; color: #888;
+      padding-top: 8px; border-top: 1px solid #f3f3f3;
+    }
+    .detail-cell label { color: #bbb; margin-right: 3px; }
+
+    /* Risk warning inside card */
+    .risk-box {
+      margin-top: 10px; padding: 8px 10px; border-radius: 6px;
+      background: linear-gradient(135deg, #fff5f5, #ffeded); border: 1px solid #ffdada;
+      font-size: 12px; line-height: 1.6;
+    }
+    .risk-tag {
+      display: inline-block; color: #c0392b; font-weight: 700; margin-right: 5px;
+    }
+    .risk-text { color: #a00; }
+
+    /* Temperature / metrics section */
+    .metrics-section {
+      background: #fff; border-radius: 10px; padding: 18px; margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .metrics-grid { display: flex; gap: 16px; flex-wrap: wrap; }
+    .metric-card {
+      flex: 1; min-width: 140px; background: #f8f9fb; border-radius: 10px;
+      padding: 14px 16px; text-align: center;
+    }
+    .metric-label { font-size: 12.5px; color: #999; margin-bottom: 6px; }
+    .metric-value { font-size: 22px; font-weight: 800; color: #1a1a2e; }
+
+    /* Status messages */
+    .status-msg { padding: 30px; text-align: center; color: #888; font-size: 15px; }
+    .status-info { background: #ebf5ff; color: #2980b9; padding: 14px 20px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; }
+    .status-warn { background: #fffaf0; color: #d35400; padding: 14px 20px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; }
+
+    /* Footer risk disclaimer */
+    .footer-risk {
+      background: #fff; border-radius: 10px; padding: 16px 20px;
+      margin-top: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      font-size: 12.5px; color: #999; line-height: 1.7; border-left: 4px solid #e74c3c;
+    }
+    .footer-time {
+      text-align: center; color: #bbb; font-size: 12px; margin-top: 12px;
+    }
+
+    .hidden { display: none !important; }
+
+    /* Run button in tab bar style */
+    .run-tab-btn {
+      flex: 1; padding: 12px 0; text-align: center; font-size: 14px; font-weight: 500;
+      cursor: pointer; color: #c0392b; border: 2px dashed #ffbaba;
+      border-radius: 10px; background: #fffafa;
+      transition: all .2s; margin-bottom: 18px;
+    }
+    .run-tab-btn:hover:not(:disabled) { background: #ffe8e8; border-color: #e74c3c; }
+    .run-tab-btn:disabled { opacity: .5; cursor: not-allowed; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>📈 每日竞价选股推荐</h1>
-    <p class="subtitle">基于 AkShare 集合竞价数据的 A 股竞价选股器 · 每日 09:26 口径</p>
 
-    <div class="card">
-      <button class="btn" id="runBtn">🔍 运行选股</button>
-      <div class="info">👆 点击下方「运行选股」按钮获取今日推荐（读取最新预生成结果）</div>
-      <div id="status"></div>
-    </div>
-
-    <div id="result" class="hidden">
-      <div class="card">
-        <h2>🌡️ 市场温度</h2>
-        <div class="metrics" id="tempMetrics"></div>
-      </div>
-
-      <div class="card">
-        <h2>📊 Top 3 精选股票</h2>
-        <div id="top3"></div>
-      </div>
-
-      <div class="card">
-        <h2>📋 全部初筛股票列表</h2>
-        <div id="allList"></div>
-      </div>
-
-      <div class="risk">
-        ⚠️ 风险提示：以上推荐仅基于竞价数据筛选，不构成任何投资建议。市场有风险，投资需谨慎，请结合市场环境与个人风险承受能力审慎决策。
-      </div>
-      <div class="footer" id="footer"></div>
-    </div>
+<!-- ===== TOP BAR ===== -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">竞</div>
+    <span>竞价选股</span>
   </div>
+  <div class="indices" id="topIndices"></div>
+</div>
 
-  <script>
-    const DATA_URL = "./data/results.json";
+<!-- ===== MAIN LAYOUT ===== -->
+<div class="main-layout">
 
-    function showStatus(msg, type) {
-      const el = document.getElementById("status");
-      el.innerHTML = `<div class="${type}">${msg}</div>`;
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <!-- Content -->
+  <main class="content">
+    <h1 class="page-title">策略选股</h1>
+
+    <button class="run-tab-btn" id="runBtn">🔍 加载最新选股结果</button>
+    <div id="status"></div>
+
+    <div id="resultArea" class="hidden">
+
+      <!-- Temperature Metrics -->
+      <div class="metrics-section" id="tempSection"></div>
+
+      <!-- Tabs + Strategy Info -->
+      <div class="tab-bar">
+        <button class="tab active" data-tab="all">每日竞价推荐</button>
+        <button class="tab" data-tab="top3">Top 3 精选</button>
+      </div>
+
+      <div class="strategy-info" id="strategyInfo"></div>
+
+      <!-- Stock Cards Grid -->
+      <div class="stock-grid" id="stockGrid"></div>
+
+      <!-- Footer Risk -->
+      <div class="footer-risk">
+        ⚠️ 风险提示：以上推荐仅基于集合竞价数据量化筛选，不构成任何投资建议。市场有风险，投资需谨慎。
+        数据仅供参考，请结合市场环境、个人风险承受能力及投资目标审慎决策。过往表现不代表未来收益。
+      </div>
+      <div class="footer-time" id="footerTime"></div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+  const DATA_URL = "./data/results.json";
+
+  // ---- Sidebar data ----
+  const SIDEBAR_ITEMS = [
+    { name: "概览", badge: null },
+    { name: "每日竞价选股", badge: "HOT" },
+    { name: "Top 3 精选", badge: null },
+    { name: "市场温度计", badge: null },
+    { name: "动能评分排行", badge: null },
+    { name: "量比分析", badge: null },
+    { name: "历史回测", badge: null },
+  ];
+
+  // ---- Render sidebar ----
+  function renderSidebar() {
+    document.getElementById("sidebar").innerHTML = SIDEBAR_ITEMS.map((item, i) => `
+      <div class="side-item${i === 1 ? ' active' : ''}">
+        ${item.name}
+        ${item.badge ? `<span class="side-badge">${item.badge}</span>` : ''}
+      </div>
+    `).join("");
+  }
+
+  // ---- Render mock indices (decorative - static for demo) ----
+  function renderIndices() {
+    // In a real app these would come from an API
+    const indices = [
+      { name: "上证指数", val: "3399.16", chg: "-1.60%", up: false },
+      { name: "深证成指", val: "15046.67", chg: "-2.25%", up: false },
+      { name: "创业板指", val: "3842.73", chg: "-4.87%", up: false },
+      { name: "科创50",   val: "2064.98", chg: "-3.53%", up: false },
+      { name: "沪深300",   val: "4780.79", chg: "-1.86%", up: false },
+    ];
+    document.getElementById("topIndices").innerHTML = indices.map(ix => `
+      <div class="idx-item">
+        <div class="idx-name">${ix.name}</div>
+        <div><span class="idx-val">${ix.val}</span>
+        <span class="idx-chg ${ix.up ? 'up-color' : 'down-color'}">${ix.chg}</span></div>
+      </div>
+    `).join("");
+  }
+
+  // ---- Color helpers (Chinese stock convention: red=up, green=down) ----
+  function priceColor(pct) {
+    if (!pct && pct !== 0) return "#333";
+    if (pct > 0) return "#e74c3c";
+    if (pct < 0) return "#27ae60";
+    return "#666";
+  }
+  function pctClass(pct) {
+    if (!pct && pct !== 0) return "";
+    return pct > 0 ? "up-color" : "down-color";
+  }
+
+  // ---- Render temperature metrics ----
+  function renderTemperature(temp) {
+    const items = [
+      { label: "综合温度", value: (temp.total ?? 0).toFixed(1), unit: "分" },
+      { label: "温度等级", value: temp.level ?? "未知", unit: "" },
+      { label: "建议仓位", value: (temp.position ?? 0), unit: "%" },
+      { label: "上涨家数占比", value: ((temp.market_pct ?? 0) * 100).toFixed(1), unit: "%" },
+    ];
+    document.getElementById("tempSection").innerHTML = `
+      <div class="metrics-grid">${items.map(m => `
+        <div class="metric-card"><div class="metric-label">${m.label}</div>
+          <div class="metric-value" style="color:${m.label.includes("温度等级") ? "#e67e22" : m.label.includes("仓位") ? "#27ae60" : "#1a1a2e"}">${m.value}<span style="font-size:14px;font-weight:400;margin-left:2px;color:#999;">${m.unit}</span></div></div>`).join("")}</div>`;
+  }
+
+  // ---- Render strategy info bar ----
+  function renderStrategyInfo(data) {
+    const d = new Date();
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    document.getElementById("strategyInfo").innerHTML = `
+      <div>
+        <div class="strat-name">集合竞价选股策略</div>
+        <div class="strat-meta">策略日期：${dateStr} · 策略特点：量比≥3 · 开盘涨幅 2%~6% · 动能评分 ≥30分 · 共筛选 <strong>${data.count || 0}</strong> 只</div>
+      </div>
+      <button class="refresh-btn" onclick="loadData()">🔄 刷新数据</button>
+    `;
+  }
+
+  // ---- Render stock card grid ----
+  let currentTab = "all";
+
+  function renderStockCards(data) {
+    const stocks = currentTab === "all"
+      ? (data.all || [])
+      : (data.top3 || []);
+
+    if (!stocks || stocks.length === 0) {
+      document.getElementById("stockGrid").innerHTML =
+        '<div class="status-msg">当前条件下暂无符合条件的个股。</div>';
+      return;
     }
 
-    function renderTemperature(temp) {
-      const items = [
-        { label: "综合温度（分数）", value: (temp.total ?? 0).toFixed(1) },
-        { label: "温度等级", value: temp.level ?? "未知" },
-        { label: "建议仓位", value: (temp.position ?? 0) + "%" },
-      ];
-      document.getElementById("tempMetrics").innerHTML = items.map(i => `
-        <div class="metric"><div class="label">${i.label}</div><div class="value">${i.value}</div></div>
-      `).join("");
-    }
+    document.getElementById("stockGrid").innerHTML = stocks.map(s => {
+      const price = s["买入价"] ?? s["开盘价"] ?? 0;
+      const pct = s["开盘涨幅%"] ?? 0;
+      const score = s["动能评分"] ?? "-";
+      const volRatio = s["量比"] ?? "-";
+      const closePrice = s["止盈价"] ? (price * 0.9524).toFixed(2) : "-";
+      const openPrice = price;
+      const level = s["买入程度"] || "谨慎";
+      const isHot = score >= 50;
 
-    function renderTop3(top3) {
-      if (!top3 || top3.length === 0) {
-        document.getElementById("top3").innerHTML = '<div class="info">今日暂无符合初筛条件的个股。</div>';
-        return;
-      }
-      document.getElementById("top3").innerHTML = top3.map((s, i) => `
-        <div class="stock">
-          <div class="head">${i + 1}. ${s["代码"]} · ${s["名称"]}</div>
-          <div class="grid">
-            <div class="cell"><div class="l">开盘价</div><div class="v">${s["开盘价"]}</div></div>
-            <div class="cell"><div class="l">止盈价 (+5%)</div><div class="v">${s["止盈价"]}</div></div>
-            <div class="cell"><div class="l">止损价 (-3%)</div><div class="v">${s["止损价"]}</div></div>
-            <div class="cell"><div class="l">动能评分</div><div class="v">${s["动能评分"]}</div></div>
-            <div class="cell"><div class="l">量比</div><div class="v">${s["量比"]}</div></div>
-            <div class="cell"><div class="l">买入程度</div><div class="v">${s["买入程度"]}</div></div>
-          </div>
+      return `<div class="stock-card">
+        <div class="card-head">
+          <span class="stock-name">${s["名称"]}<span class="stock-code">${s["代码"]}</span>${isHot ? '<span style="font-size:11px;background:#e74c3c;color:#fff;padding:1px 6px;border-radius:4px;margin-left:4px;">热</span>' : ''}</span>
         </div>
-      `).join("");
-    }
+        <div class="card-price-row">
+          <span class="price-big" style="color:${priceColor(pct)}">${Number(price).toFixed(2)}</span>
+          <span class="pct-chg ${pctClass(pct)}">${pct > 0 ? '+' : ''}${Number(pct).toFixed(2)}%</span>
+        </div>
+        <div class="card-detail-row">
+          <span class="detail-cell">昨收 <span style="color:#333">${closePrice}</span></span>
+          <span class="detail-cell">今开 <span style="color:#333">${openPrice}</span></span>
+        </div>
+        <div class="card-detail-row">
+          <span class="detail-cell">评分 <span style="color:#333">${score}</span></span>
+          <span class="detail-cell">量比 <span style="color:#333">${volRatio}</span></span>
+        </div>
+        <div class="risk-box">
+          <span class="risk-tag">${level === "不推荐" ? "禁购" : "关注"}</span>
+          <span class="risk-text">
+            ${level === "不推荐"
+              ? `动能评分较低(${score}分)，暂不建议介入；如需操作请严格控制仓位。`
+              : `日涨幅${pct}% | 量比${volRatio} | 止盈价${(s["止盈价"] || '-')} | 止损价${(s["止损价"] || '-')}`}
+          </span>
+        </div>
+      </div>`;
+    }).join("");
+  }
 
-    function renderAll(all) {
-      const wrap = document.getElementById("allList");
-      if (!all || all.length === 0) {
-        wrap.innerHTML = '<div class="info">无</div>';
-        return;
-      }
-      const rows = all.map(s => `
-        <tr>
-          <td>${s["代码"]}</td><td>${s["名称"]}</td>
-          <td>${s["买入价"] ?? s["开盘价"] ?? "-"}</td>
-          <td>${s["动能评分"] ?? "-"}</td>
-          <td>${s["量比"] ?? "-"}</td>
-          <td>${s["开盘涨幅%"] ?? "-"}</td>
-        </tr>
-      `).join("");
-      wrap.innerHTML = `
-        <div style="margin-bottom:12px;color:#718096;font-size:14px;">共 ${all.length} 只初筛股票</div>
-        <table>
-          <thead><tr><th>代码</th><th>名称</th><th>开盘价</th><th>评分</th><th>量比</th><th>涨幅%</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
+  // ---- Tab switching ----
+  document.addEventListener("click", e => {
+    if (e.target.classList.contains("tab")) {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      e.target.classList.add("active");
+      currentTab = e.target.dataset.tab;
+      if (window._lastData) renderStockCards(window._lastData);
     }
+  });
 
-    async function loadData() {
-      const btn = document.getElementById("runBtn");
-      btn.disabled = true;
-      showStatus("⏳ 正在加载最新选股结果…", "info");
-      try {
-        const resp = await fetch(DATA_URL + "?t=" + Date.now());
-        if (!resp.ok) throw new Error("HTTP " + resp.status);
-        const data = await resp.json();
-        renderTemperature(data.temperature || {});
-        renderTop3(data.top3 || []);
-        renderAll(data.all || []);
-        document.getElementById("footer").textContent =
-          `数据来源：${data.data_source || "未知"} ｜ 生成时间：${data.generated_at || "未知"}`;
-        document.getElementById("result").classList.remove("hidden");
-        showStatus("✅ 已加载最新选股结果", "info");
-      } catch (e) {
-        showStatus("⚠️ 无法获取实时数据，请检查网络或稍后重试（" + e.message + "）", "warn");
-      } finally {
-        btn.disabled = false;
-      }
+  // ---- Status helpers ----
+  function showStatus(msg, type) {
+    const el = document.getElementById("status");
+    el.innerHTML = type ? `<div class="status-${type}">${msg}</div>` : `<div class="status-msg">${msg}</div>`;
+  }
+
+  // ---- Main load ----
+  async function loadData() {
+    const btn = document.getElementById("runBtn");
+    btn.disabled = true;
+    showStatus("⏳ 正在加载最新选股结果…", "info");
+    try {
+      const resp = await fetch(DATA_URL + "?t=" + Date.now());
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      const data = await resp.json();
+      window._lastData = data;
+
+      renderTemperature(data.temperature || {});
+      renderStrategyInfo(data);
+      renderStockCards(data);
+
+      document.getElementById("footerTime").textContent =
+        `数据来源：${data.data_source || "AkShare"} ｜ 生成时间：${data.generated_at || "-"}`;
+
+      document.getElementById("resultArea").classList.remove("hidden");
+      showStatus("", "");
+    } catch (e) {
+      showStatus("⚠️ 无法获取实时数据，请检查网络或稍后重试（" + e.message + "）", "warn");
+    } finally {
+      btn.disabled = false;
     }
+  }
 
-    document.getElementById("runBtn").addEventListener("click", loadData);
-  </script>
+  // ---- Init ----
+  renderSidebar();
+  renderIndices();
+  document.getElementById("runBtn").addEventListener("click", loadData);
+</script>
 </body>
 </html>
