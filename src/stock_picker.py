@@ -38,6 +38,12 @@ try:
 except ImportError:  # 作为脚本 `python src/stock_picker.py` 运行时
     from data_service import data_service
 
+# 统一评分引擎：首页 / 历史 / 回测 / API 四端共用同一套评分逻辑
+try:
+    from .scoring import score_stock, StockFeatures
+except ImportError:
+    from scoring import score_stock, StockFeatures
+
 # ----------------------------------------------------------------------------
 # 配置常量
 # ----------------------------------------------------------------------------
@@ -132,6 +138,49 @@ def _safe_num(val):
         return float(val)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _clamp01(x):
+    try:
+        x = float(x)
+        if x != x:
+            return 0.0
+    except (TypeError, ValueError):
+        return 0.0
+    return max(0.0, min(1.0, x))
+
+
+def _sector_heat_from_avg(sec_avg_pct, market_pct):
+    """由板块平均涨幅相对大盘，映射到板块热度 [0,1]。
+
+    板块平均涨幅 == 大盘 -> 0.5；高于大盘约 3% -> ~1.0；低于约 3% -> ~0。
+    """
+    return _clamp01(0.5 + (float(sec_avg_pct) - float(market_pct)) / 6.0)
+
+
+def _to_detail(result):
+    """把 score_stock 的结果转为与前端兼容的「评分明细」字典。
+
+    既保留旧版的 4 个数值键（量比分/相对大盘分/均线偏离分/量能比分/偏离度%/量能比%），
+    又附加新的 ``dimensions``（8 维度拆解）与 ``risk_factor``，供详情页「评分拆解」使用。
+    """
+    dims = {d["key"]: d for d in result.get("dimensions", [])}
+    feat = result.get("features", {})
+    price, ma60 = _safe_num(feat.get("price")), _safe_num(feat.get("ma60"))
+    prev = _safe_num(feat.get("prev_volume"))
+    dev = ((price - ma60) / ma60 * 100.0) if ma60 > 0 else 0.0
+    ratio = (_safe_num(feat.get("auction_volume")) / prev * 100.0) if prev > 0 else 0.0
+    return {
+        "量比分": round(dims.get("vol_ratio", {}).get("score", 0.0), 2),
+        "相对大盘分": round(dims.get("rel_market", {}).get("score", 0.0), 2),
+        "均线偏离分": round(dims.get("ma60_dev", {}).get("score", 0.0), 2),
+        "量能比分": round(dims.get("vol_energy", {}).get("score", 0.0), 2),
+        "偏离度%": round(dev, 2),
+        "量能比%": round(ratio, 2),
+        "dimensions": result.get("dimensions", []),
+        "risk_factor": result.get("risk_factor", 1.0),
+        "total": result.get("total", 0.0),
+    }
 
 
 # ----------------------------------------------------------------------------
@@ -397,67 +446,61 @@ def filter_stocks(df, params, market_pct):
 # 模块 4: 动能评分
 # ----------------------------------------------------------------------------
 def get_stock_hist(code):
-    """返回 (60日均线价, 昨日全天成交量)。优先东财，失败回退新浪。"""
+    """返回 (ma60, 昨日全天成交量, ma5, ma10, ma20, 年化波动率)。
+
+    优先东财，失败回退新浪。任何失败均返回 0 元组（由评分引擎按缺失处理，
+    对应子分项得 0，绝不会因此拿到满分）。
+    """
     try:
         hist = _fetch_stock_hist_robust(code, adjust="qfq")
         if hist is None or len(hist) == 0:
-            return 0.0, 0.0
+            return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
         closes = pd.to_numeric(hist["收盘"], errors="coerce").dropna()
-        ma60 = float(closes.iloc[-60:].mean()) if len(closes) >= 60 else (float(closes.mean()) if len(closes) else 0.0)
-        prev_vol = float(pd.to_numeric(hist["成交量"], errors="coerce").iloc[-2]) if len(hist) >= 2 else 0.0
-        return ma60, prev_vol
+        vols = pd.to_numeric(hist["成交量"], errors="coerce").dropna()
+        n = len(closes)
+        ma60 = float(closes.iloc[-60:].mean()) if n >= 60 else (float(closes.mean()) if n else 0.0)
+        ma20 = float(closes.iloc[-20:].mean()) if n >= 20 else ma60
+        ma10 = float(closes.iloc[-10:].mean()) if n >= 10 else ma20
+        ma5 = float(closes.iloc[-5:].mean()) if n >= 5 else ma10
+        prev_vol = float(vols.iloc[-2]) if n >= 2 else 0.0
+        # 年化波动率：近 20 日对数收益标准差 * sqrt(252)
+        if n >= 21:
+            rets = np.diff(np.log(closes.iloc[-21:].to_numpy(dtype=float)))
+            vol = float(np.std(rets) * np.sqrt(252))
+        else:
+            vol = 0.0
+        return ma60, prev_vol, ma5, ma10, ma20, vol
     except Exception:
-        return 0.0, 0.0
+        return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
 
 def calc_momentum_score(price, vol_ratio, pct_change, ma60, market_pct,
                         auction_volume, prev_volume, params=None):
-    """动能评分 (满分100，权重可配置)。返回 (总分, 明细dict)。"""
+    """动能评分（向后兼容包装）。
+
+    直接委托统一评分引擎 score_stock，仅用传入的 4 个原始维度构造特征，
+    其余维度（竞价金额/资金流/板块热度/趋势）因缺少输入得 0。返回 (总分, 明细dict)，
+    明细保留旧版 4 个数值键以保持外部调用兼容。
+    """
     p = params or StrategyParams()
-    # 1) 竞价量比归一化
-    if vol_ratio >= p.vol_ratio_top:
-        s1 = p.w_vol_ratio
-    elif vol_ratio >= p.vol_ratio_min:
-        s1 = p.w_vol_ratio * (vol_ratio - p.vol_ratio_min) / (p.vol_ratio_top - p.vol_ratio_min)
-    else:
-        s1 = 0.0
-
-    # 2) 相对大盘涨幅
-    diff = (pct_change or 0.0) - (market_pct or 0.0)
-    if diff >= 2.0:
-        s2 = p.w_rel_market
-    elif diff > 0:
-        s2 = p.w_rel_market * diff / 2.0
-    else:
-        s2 = 0.0
-
-    # 3) 60日均线偏离度
-    dev = ((price - ma60) / ma60) if (ma60 and ma60 > 0) else 0.0
-    if dev >= p.ma60_dev_max:
-        s3 = max(0.0, p.w_ma60_dev - (dev - p.ma60_dev_max) * 100.0)
-    elif dev >= p.ma60_dev_sweet:
-        s3 = p.w_ma60_dev
-    elif dev >= 0:
-        s3 = p.w_ma60_dev * dev / p.ma60_dev_sweet
-    else:
-        s3 = 0.0
-
-    # 4) 竞价成交量 / 昨日全天成交量
-    ratio = (auction_volume / prev_volume) if (prev_volume and prev_volume > 0) else 0.0
-    if ratio >= p.vol_energy_hi:
-        s4 = p.w_vol_energy
-    elif ratio >= p.vol_energy_lo:
-        s4 = p.w_vol_energy * (ratio - p.vol_energy_lo) / (p.vol_energy_hi - p.vol_energy_lo)
-    else:
-        s4 = 0.0
-
-    total = min(100.0, s1 + s2 + s3 + s4)
+    feat = StockFeatures(
+        price=_safe_num(price), vol_ratio=_safe_num(vol_ratio),
+        pct_open=_safe_num(pct_change), ma60=_safe_num(ma60),
+        auction_volume=_safe_num(auction_volume), prev_volume=_safe_num(prev_volume),
+        market_pct=_safe_num(market_pct),
+    )
+    result = score_stock(feat, p)
+    dims = {d["key"]: d["score"] for d in result["dimensions"]}
+    dev = ((price - ma60) / ma60 * 100.0) if ma60 else 0.0
+    ratio = (auction_volume / prev_volume * 100.0) if prev_volume else 0.0
     detail = {
-        "量比分": round(s1, 2), "相对大盘分": round(s2, 2),
-        "均线偏离分": round(s3, 2), "量能比分": round(s4, 2),
-        "偏离度%": round(dev * 100, 2), "量能比%": round(ratio * 100, 2),
+        "量比分": round(dims.get("vol_ratio", 0.0), 2),
+        "相对大盘分": round(dims.get("rel_market", 0.0), 2),
+        "均线偏离分": round(dims.get("ma60_dev", 0.0), 2),
+        "量能比分": round(dims.get("vol_energy", 0.0), 2),
+        "偏离度%": round(dev, 2), "量能比%": round(ratio, 2),
     }
-    return round(total, 2), detail
+    return round(result["total"], 2), detail
 
 
 # ----------------------------------------------------------------------------
@@ -591,6 +634,13 @@ def generate_report(temp, res_df, low, high, today, multi_sectors):
 # ----------------------------------------------------------------------------
 def _enrich_and_score(filtered, market_pct, params=None):
     p = params or StrategyParams()
+    # 板块平均涨幅（用于板块热度），与初筛/评分同源
+    if "行业" in filtered.columns and "涨跌幅" in filtered.columns:
+        sec_avg = filtered.groupby("行业")["涨跌幅"].transform("mean")
+        filtered = filtered.assign(__sec_avg=sec_avg)
+    else:
+        filtered = filtered.assign(__sec_avg=float(market_pct))
+
     records = []
     cache = {}
     for _, row in filtered.iterrows():
@@ -600,18 +650,31 @@ def _enrich_and_score(filtered, market_pct, params=None):
         vol_ratio = _safe_num(row.get("量比", 0))
         pct = _safe_num(row.get("涨跌幅", 0))
         auction_vol = _safe_num(row.get("成交量", 0))
+        auction_amt = _safe_num(row.get("成交额", 0))
 
         if code not in cache:
             cache[code] = get_stock_hist(code)
             time.sleep(0.02)
-        ma60, prev_vol = cache[code]
+        ma60, prev_vol, ma5, ma10, ma20, vol = cache[code]
 
-        score, detail = calc_momentum_score(price, vol_ratio, pct, ma60, market_pct,
-                                            auction_vol, prev_vol, p)
         industry, mv = get_stock_profile(code)
         if not industry or str(industry).strip() in ("", "未知", "nan"):
             industry = row.get("行业", "未知")
             time.sleep(0.02)
+
+        sec_avg_pct = _safe_num(row.get("__sec_avg", market_pct))
+        feat = StockFeatures(
+            code=code, name=name, sector=industry,
+            price=price, vol_ratio=vol_ratio, pct_open=pct,
+            auction_amount=auction_amt, auction_volume=auction_vol,
+            ma60=ma60, ma20=ma20, ma10=ma10, ma5=ma5,
+            prev_volume=prev_vol, volatility=vol,
+            sector_heat=_sector_heat_from_avg(sec_avg_pct, market_pct),
+            float_mv=float(mv), is_st=("ST" in str(name).upper()),
+            market_pct=float(market_pct),
+        )
+        result = score_stock(feat, p)
+        score = result["total"]
 
         # 涨停价（用于前端提示买入难度）：主板 10%、创业板/科创板 20%
         limit_pct = 0.20 if code.startswith(("30", "68")) else 0.10
@@ -627,9 +690,9 @@ def _enrich_and_score(filtered, market_pct, params=None):
             "行业": industry, "市值": round(float(mv), 2), "涨停价": limit_up_price,
             "量比": round(vol_ratio, 2),
             "开盘涨幅%": round(pct, 2),
-            "成交额": _safe_num(row.get("成交额", 0)),
+            "成交额": auction_amt,
             "最新价": round(price, 2),
-            "明细": detail,
+            "明细": _to_detail(result),
         })
     return pd.DataFrame(records)
 
@@ -731,22 +794,38 @@ _DEMO_HIST_MAP = {
 
 
 def _enrich_demo(filtered, market_pct, params=None):
-    """离线 enrich（demo 用，不触网）。返回基础 res_df（不含板块加分/买入程度）。"""
+    """离线 enrich（demo 用，不触网）。返回基础 res_df（不含板块加分/买入程度）。
+
+    仍走统一评分引擎 score_stock，只是特征来自内置样例（清晰标注 DEMO）。
+    """
     p = params or StrategyParams()
+    mp = float(market_pct)
     recs = []
     for _, row in filtered.iterrows():
         code = str(row["代码"])
         price = _safe_num(row["最新价"]); vr = _safe_num(row["量比"])
         pct = _safe_num(row["涨跌幅"]); av = _safe_num(row["成交量"])
         ma60, pv = _DEMO_HIST_MAP.get(code, (price * 0.95, av * 2))
-        score, detail = calc_momentum_score(price, vr, pct, ma60, market_pct, av, pv, p)
+        # demo 下构造一个温和多头排列（ma5>ma10>ma20>ma60）与中等波动率
+        ma5, ma10, ma20 = ma60 * 1.06, ma60 * 1.04, ma60 * 1.02
+        vol = 0.35
+        sec_avg_pct = mp + 1.5  # demo 假设所属板块略强于大盘
+        feat = StockFeatures(
+            code=code, name=row["名称"], sector=row.get("行业", "未知"),
+            price=price, vol_ratio=vr, pct_open=pct,
+            auction_amount=_safe_num(row.get("成交额", 0)), auction_volume=av,
+            ma60=ma60, ma20=ma20, ma10=ma10, ma5=ma5, prev_volume=pv,
+            volatility=vol, sector_heat=_sector_heat_from_avg(sec_avg_pct, mp),
+            float_mv=5e10, is_st=False, market_pct=mp,
+        )
+        result = score_stock(feat, p)
         recs.append({
-            "代码": code, "名称": row["名称"], "动能评分": score,
+            "代码": code, "名称": row["名称"], "动能评分": result["total"],
             "买入价": round(price, 2), "止盈价": round(price * (1 + p.take_profit), 2),
             "止损价": round(price * (1 - p.stop_loss), 2), "行业": row["行业"],
             "市值": round(float(row.get("市值", 0)), 2), "涨停价": round(price * 1.1, 2),
             "成交额": _safe_num(row.get("成交额", 0)),
-            "最新价": round(price, 2), "明细": detail,
+            "最新价": round(price, 2), "明细": _to_detail(result),
         })
     return pd.DataFrame(recs)
 
@@ -892,8 +971,28 @@ def _bt_trades_for_stock(hist, code, name, mkt_pct, params=None, start=None, end
             continue
         ma60_win = c[i - 60:i]
         ma60 = float(np.mean(ma60_win)) if len(ma60_win) else 0.0
+        ma20 = float(np.mean(c[i - 20:i])) if i >= 20 else ma60
+        ma10 = float(np.mean(c[i - 10:i])) if i >= 10 else ma20
+        ma5 = float(np.mean(c[i - 5:i])) if i >= 5 else ma10
         prev_vol = float(v[i - 1]) if np.isfinite(v[i - 1]) else 0.0
-        score, _ = calc_momentum_score(open_i, vol_ratio, pct_open, ma60, mp, vol_i, prev_vol, p)
+        # 年化波动率：截至当日的近 20 日对数收益标准差
+        if i >= 20:
+            rets = np.diff(np.log(c[i - 20:i + 1].astype(float)))
+            vol = float(np.std(rets) * np.sqrt(252))
+        else:
+            vol = 0.0
+        # 板块热度（回测代理）：该股开盘涨幅相对大盘的强弱
+        sector_heat = _clamp01(0.5 + (pct_open - mp) / 6.0)
+        feat = StockFeatures(
+            code=code, name=name, sector=name,
+            price=open_i, vol_ratio=vol_ratio, pct_open=pct_open,
+            auction_amount=amount_i, auction_volume=vol_i,
+            ma60=ma60, ma20=ma20, ma10=ma10, ma5=ma5, prev_volume=prev_vol,
+            volatility=vol, sector_heat=sector_heat,
+            float_mv=0.0, is_st=is_st, market_pct=mp,
+        )
+        result = score_stock(feat, p)
+        score = result["total"]
         next_open = o[i + 1]
         if not np.isfinite(next_open) or next_open <= 0:
             continue
