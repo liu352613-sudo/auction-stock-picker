@@ -27,17 +27,26 @@ CORS 已全开，可独立部署后由 EdgeOne 静态站跨域调用（设 `wind
 ```
 
 ### GET `/api/recommend`
-今日推荐。返回静态选股结果 `data/results.json`，并附带实时盘中报价。
+今日推荐。按**统一交易日历**选取「生效交易日」底稿（周末/节假日→最近交易日；交易日 09:26 前→上一交易日；09:26 后→当天。若 `results.json` 的 `trade_date` 与生效日不符且存在对应历史快照，则改用该快照），返回静态选股结果并附带实时盘中报价与**盘中实时重算评分**。
+
 ```json
 {
   "count": 6,
+  "trade_date": "2026-07-10",
+  "effective_date": "2026-07-11",
+  "data_freshness": "today",
   "temperature": { "total": 78.0, "level": "温暖", "position": 60 },
-  "stocks": [ { "代码": "000001", "名称": "平安银行", "现价": 12.34, "涨跌幅": 1.23, "评分": 94.5, "买入程度": "强烈推荐", ... } ],
+  "stocks": [ { "代码": "000001", "名称": "平安银行", "现价": 12.34, "涨跌幅": 1.23, "评分": 94.5, "买入程度": "强烈推荐", "评分明细": { "dimensions": [ { "key":"vol_ratio", "label":"量比", "score":17.1, "max":18, "note":"..." }, ... ], "risk_factor":1.0, "risk_note":"风险中性" }, "features": { ... } } ],
   "live": { "by_code": { "000001": { "最新价": 12.40, "涨跌幅": 1.50, "成交量": 1234567, "成交额": 1.5e8, "量比": 3.1 } } },
-  "live_flag": true, "updated_at": "2026-07-11 15:15:00"
+  "live_flag": true,
+  "live_scores": { "000001": { "score": 95.2, "delta": 0.7, "dimensions": [ ... ], "risk_factor": 1.0, "risk_note": "风险中性" } },
+  "live_score_flag": true,
+  "updated_at": "2026-07-11 15:15:00"
 }
 ```
-前端据此定点刷新候选列表的现价/涨跌幅（每 20s）。
+- `trade_date`：底稿数据生成日；`effective_date`：生效交易日（统一日历口径）；`data_freshness`：`"today"`（今日实时推荐）/ `"previous"`（最近交易日推荐，非交易时段或盘前）。
+- `live_scores`：用**同一评分引擎** `score_stock` 对实时报价（量比/涨跌幅/竞价额/竞价量）覆盖日内字段后重算的盘中评分；`delta` 为相对盘前静态评分的变化量，盘中列表据此动态刷新总分并打 ▲/▼ 标记。
+- 前端据此定点刷新候选列表的现价/涨跌幅与盘中评分（每 20s）。
 
 ### GET `/api/history`
 历史推荐索引；`?date=YYYY-MM-DD` 返回该期快照。
@@ -65,10 +74,12 @@ CORS 已全开，可独立部署后由 EdgeOne 静态站跨域调用（设 `wind
   "kline": { "code":"000001", "name":"平安银行", "bars":[ { "d":"2026-07-10", "o":12.1, "c":12.34, "h":12.4, "l":12.05, "v":1234567 } ] },
   "live": { "最新价":12.40, "涨跌幅":1.50, "成交量":..., "成交额":..., "量比":3.1 },
   "fund_flow": [ { "日期":"2026-07-10", "主力净流入-净额":1.2e8, "主力净流入-净占比":5.3 } ],
+  "live_score": { "score": 95.2, "delta": 0.7, "dimensions": [ ... ], "risk_factor": 1.0, "risk_note": "风险中性" },
   "live_flag": true
 }
 ```
-`{code}` 自动 `zfill(6)`；404 当静态与 K线均无该股票。
+- `live_score`：用同一评分引擎对实时报价重算的盘中评分（需该股在今日推荐中且带结构特征 `features`）。`dimensions` 为 8 维度拆解，`delta` 为相对盘前静态评分的变化。
+- `{code}` 自动 `zfill(6)`；404 当静态与 K线均无该股票。
 
 ### GET `/api/config`
 当前策略参数（来自 `data/params.json`：`default` / `best` / `best_stats` / `tuned_at`）。
@@ -92,6 +103,28 @@ CORS 已全开，可独立部署后由 EdgeOne 静态站跨域调用（设 `wind
 | `POST /api/trade` | 实盘交易：下单/撤单（需券商账户与风控授权） | `reserved` |
 
 新增能力只需在 `api/routers/` 内追加路由，前端按统一 `status` 字段对接。
+
+---
+
+## 2.1 统一评分引擎（四端同源）
+
+所有推荐评分均由 `src/scoring.py` 的 `score_stock()` 单一实现计算，首页 / 历史推荐 / 回测 / API 四端共用同一份逻辑与同一套策略参数（`data/params.json` 的 `best`），杜绝多套公式或固定 100 分的假数据。
+
+输入是标准化特征 `StockFeatures`（量比、开盘涨幅、竞价额、竞价量、60 日均线、短期均线、量能比、主力资金流、板块热度、波动率、市值、ST 标记、大盘涨幅等），由不同上下文（盘中实时行情 / 历史日线 / 快照缓存）填充。
+
+8 个连续、差异化子分项（权重合计 100），外加风险惩罚因子：
+| 维度 | 权重 | 维度 | 权重 |
+|------|------|------|------|
+| 量比 vol_ratio | 18 | 量能比 vol_energy | 12 |
+| 竞价金额 amount | 12 | 资金流 fund_flow | 12 |
+| 相对大盘 rel_market | 12 | 板块热度 sector | 10 |
+| 均线偏离 ma60_dev | 15 | 趋势 trend | 9 |
+
+- 每个子分项都是实值连续函数；**缺失数据仅该项得 0，不会抬高总分**，最终分数必然呈现真实差异化分布（无硬编码满分）。
+- `risk_factor` 对 ST / 高波动 / 极小市值 / 近涨停施加 0.8~0.95 惩罚，并以 `risk_note` 文本说明。
+- 输出 `dimensions` 数组（8 项，每项含 `key/label/score/max/note`）供前端「评分拆解」可视化；`total` 为夹紧至 [0,100] 的最终得分。
+
+**盘中实时重算**：`/api/recommend` 与 `/api/stock/{code}` 用 live quote 覆盖 `features` 的日内字段后复用同一 `score_stock`，返回 `live_scores` / `live_score`（含 `delta`），实现评分盘中动态变化。同报价重算与盘前静态评分误差 ≤ 0.1，保证口径一致。
 
 ---
 
