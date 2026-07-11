@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-11 15:11:59",
+  "generated_at": "2026-07-11 15:22:33",
   "data_source": "内置样例数据(DEMO)",
-  "update_time": "15:11",
+  "update_time": "15:22",
   "params": {
     "vol_ratio_min": 3.5,
     "auction_amount_min": 3000000,

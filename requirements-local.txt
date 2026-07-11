@@ -1,9 +1,11 @@
-# Local Python deps for generate_results.py (runs on your machine, NOT in EdgeOne)
-# EdgeOne hosts a pure static site (index.html + data/results.json)
+# Local Python deps for the data-generation pipeline (runs on your machine / CI, NOT in EdgeOne)
+# EdgeOne hosts a pure static site (index.html + data/*.json)
 akshare>=1.11.0
 pandas>=2.0.0
 numpy>=1.24.0
 
-# Optional: only needed if you deploy app_flask.py to Render
-Flask>=2.0.0
-flask-cors>=3.0.0
+# Optional: only needed if you run the FastAPI realtime backend (api/main.py)
+# 安装：pip install -r api/requirements.txt
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9
