@@ -59,6 +59,36 @@
     return card;
   }
 
+  // ---------- 实时指数：核心 6 + 折叠其余（按分类预留） ----------
+  // 核心指数（默认常驻首屏，其余默认折叠，一键展开）
+  var CORE_INDEX = {
+    "000001": "上证指数", "399001": "深证成指", "399006": "创业板指",
+    "000300": "沪深300", "000688": "科创50", "000852": "中证1000"
+  };
+  // 分类映射（预留「市场 / 行业 / 主题」分类展示能力；数据或后端携带 category 字段时优先采用）
+  var INDEX_CATEGORY = {
+    "000001": "市场指数", "399001": "市场指数", "399006": "市场指数",
+    "000300": "市场指数", "000688": "市场指数", "000852": "市场指数",
+    "000016": "市场指数", "000905": "市场指数", "399005": "市场指数", "000010": "市场指数",
+    "000932": "行业指数", "000036": "行业指数", "399967": "行业指数", "000813": "行业指数",
+    "000861": "主题指数", "399976": "主题指数", "000827": "主题指数", "399971": "主题指数"
+  };
+  var CAT_ORDER = { "市场指数": 0, "行业指数": 1, "主题指数": 2, "其他指数": 3 };
+  var LS_IDX_EXPAND = "asp_idx_expanded";
+
+  function isCoreIndex(ix) {
+    if (ix.code && CORE_INDEX[ix.code]) return true;
+    if (ix.name) {
+      for (var k in CORE_INDEX) { if (CORE_INDEX[k] === ix.name || ix.name.indexOf(CORE_INDEX[k]) === 0) return true; }
+    }
+    return false;
+  }
+  function categoryOfIndex(ix) {
+    return ix.category || INDEX_CATEGORY[ix.code] || "其他指数";
+  }
+  function getIdxExpand() { try { return localStorage.getItem(LS_IDX_EXPAND) === "1"; } catch (e) { return false; } }
+  function setIdxExpand(v) { try { localStorage.setItem(LS_IDX_EXPAND, v ? "1" : "0"); } catch (e) {} }
+
   function idxCard(ix) {
     var pct = parseFloat(String(ix.pct).replace("%", ""));
     return U.el("div", { class: "card index-card" }, [
@@ -69,6 +99,65 @@
   }
   function indicesGrid(indices, live) {
     return U.el("div", { class: "grid grid-5" }, (indices || []).map(idxCard));
+  }
+
+  // 首页实时指数模块：核心常驻 + 其余按分类折叠（默认折叠，展开态由 LocalStorage 记忆）
+  function renderIndicesModule(container, indices) {
+    container.innerHTML = "";
+    indices = indices || [];
+    var core = [], extra = [];
+    indices.forEach(function (ix) { (isCoreIndex(ix) ? core : extra).push(ix); });
+    var toggleWrap = document.getElementById("idx-toggle-wrap");
+
+    if (core.length) container.appendChild(U.el("div", { class: "grid grid-core" }, core.map(idxCard)));
+
+    if (extra.length) {
+      var groups = {};
+      extra.forEach(function (ix) { var c = categoryOfIndex(ix); (groups[c] = groups[c] || []).push(ix); });
+      var cats = Object.keys(groups).sort(function (a, b) {
+        return (CAT_ORDER[a] != null ? CAT_ORDER[a] : 9) - (CAT_ORDER[b] != null ? CAT_ORDER[b] : 9);
+      });
+      var box = U.el("div", { class: "idx-extra" });
+      cats.forEach(function (cat) {
+        box.appendChild(U.el("div", { class: "idx-cat-label", text: cat }));
+        box.appendChild(U.el("div", { class: "grid grid-5" }, groups[cat].map(idxCard)));
+      });
+      var expanded = getIdxExpand();
+      if (expanded) { box.classList.add("open"); box.style.maxHeight = "none"; }
+      else { box.style.maxHeight = "0px"; }
+      container.appendChild(box);
+
+      if (toggleWrap) {
+        toggleWrap.innerHTML = "";
+        var btn = U.el("button", { class: "idx-toggle", type: "button" });
+        function syncLabel() {
+          var open = box.classList.contains("open");
+          btn.textContent = open ? "收起 ▴" : ("展开全部 (" + extra.length + ") ▾");
+          btn.setAttribute("aria-expanded", open ? "true" : "false");
+        }
+        btn.addEventListener("click", function () {
+          var open = box.classList.contains("open");
+          if (open) {
+            box.style.maxHeight = box.scrollHeight + "px";
+            void box.offsetHeight; // 强制回流，确保过渡起点生效
+            requestAnimationFrame(function () { box.style.maxHeight = "0px"; box.classList.remove("open"); });
+          } else {
+            box.style.maxHeight = box.scrollHeight + "px";
+            box.classList.add("open");
+            box.addEventListener("transitionend", function te(e) {
+              if (e.propertyName === "max-height" && box.classList.contains("open")) box.style.maxHeight = "none";
+              box.removeEventListener("transitionend", te);
+            });
+          }
+          setIdxExpand(!open);
+          syncLabel();
+        });
+        syncLabel();
+        toggleWrap.appendChild(btn);
+      }
+    } else if (toggleWrap) {
+      toggleWrap.innerHTML = "";
+    }
   }
 
   // ---------- 双模式：实时刷新层 ----------
@@ -99,7 +188,7 @@
     if (apiKnown === false) return;
     U.fetchAPI("/api/market").then(function (d) {
       var grid = document.getElementById("idx-grid");
-      if (grid) { grid.innerHTML = ""; (d.indices || []).forEach(function (ix) { grid.appendChild(idxCard(ix)); }); }
+      if (grid) renderIndicesModule(grid, d.indices || []);
       if (d.live) U.setLive("live", "● 实时行情 · 每20s");
       else if (apiKnown) U.setLive("static", "○ 实时接口(静态回退)");
     }).catch(function () {});
@@ -221,16 +310,20 @@
     app.innerHTML = "";
     load("results.json").then(function (res) {
       setDS(res);
+      var idxGrid = U.el("div", { class: "idx-grid", id: "idx-grid" });
       var wrap = U.el("div", {});
       // 温度
       wrap.appendChild(U.el("div", { class: "section" }, [
         U.el("div", { class: "section-title", text: "大盘温度" }),
         tempHero(res.temperature || {}),
       ]));
-      // 指数
+      // 指数（核心常驻 + 其余折叠）
       wrap.appendChild(U.el("div", { class: "section" }, [
-        U.el("div", { class: "section-title", text: "实时指数" }),
-        (function () { var g = indicesGrid(res.indices, res.indices_live); g.id = "idx-grid"; return g; })(),
+        U.el("div", { class: "section-title" }, [
+          "实时指数",
+          U.el("span", { class: "idx-toggle-wrap", id: "idx-toggle-wrap" }),
+        ]),
+        idxGrid,
       ]));
       // 热点板块（实时补充）
       wrap.appendChild(U.el("div", { class: "section" }, [
@@ -251,6 +344,7 @@
         U.el("div", { class: "note", text: "策略：集合竞价量比≥阈值 + 开盘涨幅动态区间 + 动能评分排序，T+1 次日开盘卖出。明细见个股详情。" }),
       ]));
       app.appendChild(wrap);
+      renderIndicesModule(idxGrid, res.indices || []);
       startLive(refreshPickLive, 20000);
     }).catch(function (e) {
       app.innerHTML = '<div class="error">加载选股数据失败：' + U.escapeHtml(e.message) + '<br>请确认 data/results.json 已生成。</div>';

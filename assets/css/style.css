@@ -127,6 +127,28 @@ a:hover { text-decoration: underline; }
 .index-card .vl { font-size: 18px; font-weight: 700; margin: 4px 0 2px; }
 .index-card .pc { font-size: 13px; font-weight: 600; }
 
+/* ---------- 实时指数：核心常驻 + 折叠其余 ---------- */
+.grid-core { grid-template-columns: repeat(6, 1fr); }
+.idx-grid { margin-bottom: 4px; }
+.idx-extra {
+  overflow: hidden; max-height: 0; opacity: 0;
+  transition: max-height .32s ease, opacity .25s ease;
+}
+.idx-extra.open { opacity: 1; }
+.idx-cat-label {
+  font-size: 11px; color: var(--text-mute); margin: 14px 0 6px;
+  letter-spacing: .5px; display: flex; align-items: center; gap: 8px;
+}
+.idx-cat-label::before { content: ""; width: 10px; height: 1px; background: var(--border); }
+.idx-toggle-wrap { margin-left: auto; }
+.idx-toggle {
+  font-size: 12px; font-weight: 600; color: var(--accent);
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 8px; padding: 3px 12px; cursor: pointer; white-space: nowrap;
+  transition: border-color .15s, background .15s;
+}
+.idx-toggle:hover { border-color: var(--accent); background: rgba(47,129,247,.08); }
+
 /* ---------- 精选卡 ---------- */
 .pick-card { display: flex; flex-direction: column; gap: 8px; cursor: pointer; transition: transform .12s, border-color .12s; }
 .pick-card:hover { transform: translateY(-3px); border-color: var(--accent); }
@@ -234,6 +256,7 @@ tbody tr:hover { background: rgba(47,129,247,.06); }
 /* ---------- 响应式 ---------- */
 @media (max-width: 920px) {
   .grid-5 { grid-template-columns: repeat(3, 1fr); }
+  .grid-core { grid-template-columns: repeat(3, 1fr); }
   .grid-3 { grid-template-columns: 1fr; }
   .grid-2 { grid-template-columns: 1fr; }
   .hero { grid-template-columns: 1fr; justify-items: center; text-align: center; }
@@ -243,6 +266,7 @@ tbody tr:hover { background: rgba(47,129,247,.06); }
 }
 @media (max-width: 560px) {
   .grid-5 { grid-template-columns: repeat(2, 1fr); }
+  .grid-core { grid-template-columns: repeat(2, 1fr); }
   .topbar { flex-wrap: wrap; gap: 10px; }
   .nav { margin-left: 0; width: 100%; }
 }
