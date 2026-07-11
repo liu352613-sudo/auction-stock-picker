@@ -4,10 +4,10 @@
     "count": 6,
     "temperature": 78.0,
     "level": "温暖",
-    "avg_score": 77.5,
-    "max_score": 82.1,
-    "top1": "五粮液",
-    "top1_code": "000858",
+    "avg_score": 76.3,
+    "max_score": 83.2,
+    "top1": "平安银行",
+    "top1_code": "000001",
     "data_source": "内置样例数据(DEMO)",
     "params_tuned": true
   }

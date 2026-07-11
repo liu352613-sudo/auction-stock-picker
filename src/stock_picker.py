@@ -537,14 +537,14 @@ def get_stock_profile(code):
 # 模块 6: 板块效应加分
 # ----------------------------------------------------------------------------
 def add_sector_bonus(df, params=None):
-    """同一板块 >=2 只进入初筛，则该板块所有股票统一加分（可配置）。"""
+    """板块效应已并入统一评分引擎的「板块热度」维度，此处仅计算「多股同板块」集合
+    供报告标注，**不再对评分做平铺加分**，避免与引擎重复计算、并与盘中实时重算口径一致。
+    """
     p = params or StrategyParams()
     df = df.copy()
     counts = df["行业"].value_counts()
     multi = set(counts[counts >= 2].index.tolist())
     df["板块加分"] = 0.0
-    df.loc[df["行业"].isin(multi), "板块加分"] = p.sector_bonus
-    df["动能评分"] = (df["动能评分"] + df["板块加分"]).clip(upper=100.0)
     return df, multi
 
 

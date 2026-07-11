@@ -329,15 +329,13 @@ def score_stock(f: StockFeatures, params=None) -> Dict:
     factor, risk_note = _risk_factor(f)
     total = round(min(100.0, raw) * factor, 2)
     total = _clamp(total, 0.0, 100.0)
-    dimensions.append({
-        "key": "risk", "label": "风险调整",
-        "score": round(factor * 100, 1), "max": 100.0,
-        "note": risk_note, "is_factor": True,
-    })
+    # dimensions 仅含 8 个评分子分项（用于可视化拆解）；风险因子单独以
+    # risk_factor / risk_note 暴露，避免把「因子=1.0 时 score=100」画成一条满格误导柱。
     return {
         "total": total,
         "raw": round(raw, 2),
         "risk_factor": round(factor, 3),
+        "risk_note": risk_note,
         "dimensions": dimensions,
         "features": f.to_dict(),
     }
@@ -347,9 +345,9 @@ def explain_text(result: Dict) -> List[str]:
     """把评分结果转成可读的中文解释列表（供详情/报告使用）。"""
     out = []
     for d in result.get("dimensions", []):
-        if d.get("is_factor"):
-            out.append(f"【风险调整】{d['note']}（因子 {d['score']/100:.2f}）")
-        else:
-            out.append(f"【{d['label']}】{d['note']}（{d['score']}/{d['max']}）")
+        out.append(f"【{d['label']}】{d['note']}（{d['score']}/{d['max']}）")
+    rf = result.get("risk_factor", 1.0)
+    if rf < 1.0:
+        out.append(f"【风险调整】{result.get('risk_note', '风险中性')}（因子 {rf:.2f}）")
     out.append(f"综合得分：{result['total']}")
     return out

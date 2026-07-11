@@ -218,9 +218,13 @@ def main():
     os.makedirs(HISTORY_DIR, exist_ok=True)
     out_path = os.path.join(DATA_DIR, "results.json")
 
-    picker = AuctionStockPicker()
-    result = picker.pick_stocks(demo=args.demo)
     params_dict, params_full = load_params()
+    # 生成时即采用与数据一同下发的「生效参数」，确保静态评分与 API 实时重算
+    # 使用完全相同的策略参数（避免 best/default 口径不一致）。
+    from src.stock_picker import StrategyParams
+    params_obj = StrategyParams.from_dict(params_dict)
+    picker = AuctionStockPicker(params=params_obj)
+    result = picker.pick_stocks(demo=args.demo, params=params_obj)
     payload = build_payload(result, params_dict)
 
     # 实时拉取指数行情

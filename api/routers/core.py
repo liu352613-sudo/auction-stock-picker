@@ -16,9 +16,82 @@ from pydantic import BaseModel
 from api import loaders
 from src.data_service import data_service
 from src.stock_picker import StrategyParams, get_default_params
+from src.scoring import score_stock, StockFeatures
 from src.trading_calendar import effective_trade_date
 
 router = APIRouter()
+
+
+def _live_params():
+    """取当前生效策略参数（best→default）用于盘中实时重算。"""
+    try:
+        p = loaders.params()
+        best = (p.get("best") or p.get("default")) or get_default_params().to_dict()
+        return StrategyParams.from_dict(best)
+    except Exception:
+        return get_default_params()
+
+
+def _params_from_payload(payload):
+    """从数据载荷（results/snapshot 的 ``params`` 字段）解析生成时所用的策略参数。
+
+    生成端已将生效参数写入 results.json 的 ``params``，实时重算复用同一份，
+    保证「盘前静态评分」与「盘中实时评分」的策略参数口径完全一致。
+    """
+    try:
+        flat = (payload or {}).get("params") or loaders.params()
+        if isinstance(flat, dict) and "best" in flat and "w_vol_ratio" not in flat:
+            flat = flat.get("best") or flat.get("default")
+        return StrategyParams.from_dict(flat)
+    except Exception:
+        return get_default_params()
+
+
+def _recompute_live_scores(shown, quotes, params):
+    """用实时盘中报价覆盖「日内字段」，经统一评分引擎重算每只股票的盘中评分。
+
+    结构特征（ma5/10/20/60、波动率、板块热度、资金流、市值等）沿用快照缓存，
+    只有 价格/量比/涨跌幅/竞价额/竞价量 用 live quote 覆盖 —— 与盘前生成走的是
+    **同一个 score_stock**，保证首页/历史/回测/API 四端评分口径完全一致。
+    返回 {code: {score, delta, dimensions, risk_factor}}。
+    """
+    out = {}
+    if not quotes:
+        return out
+    for s in shown.get("stocks", []) or []:
+        code = str(s.get("代码"))
+        q = quotes.get(code)
+        if not q:
+            continue
+        feat_d = dict(s.get("features") or {})
+        # 覆盖日内可得字段（缺失则保留快照值）
+        if q.get("最新价") is not None:
+            feat_d["price"] = q["最新价"]
+        if q.get("量比") is not None:
+            feat_d["vol_ratio"] = q["量比"]
+        if q.get("涨跌幅") is not None:
+            feat_d["pct_open"] = q["涨跌幅"]
+        if q.get("成交额") is not None:
+            feat_d["auction_amount"] = q["成交额"]
+        if q.get("成交量") is not None:
+            feat_d["auction_volume"] = q["成交量"]
+        try:
+            feat = StockFeatures(**{k: feat_d.get(k) for k in StockFeatures.__dataclass_fields__})
+        except Exception:
+            continue
+        try:
+            res = score_stock(feat, params)
+        except Exception:
+            continue
+        base = float(s.get("评分") or 0.0)
+        out[code] = {
+            "score": res["total"],
+            "delta": round(res["total"] - base, 2),
+            "dimensions": res["dimensions"],
+            "risk_factor": res["risk_factor"],
+            "risk_note": res.get("risk_note", "风险中性"),
+        }
+    return out
 
 
 def _now():
@@ -82,6 +155,7 @@ def api_recommend():
     codes = [str(s.get("代码")) for s in shown.get("stocks", []) or []]
     live = None
     live_flag = False
+    quotes = {}
     try:
         quotes = data_service.spot_quote(codes) if codes else {}
         if quotes:
@@ -95,6 +169,15 @@ def api_recommend():
     out["data_freshness"] = "today" if out["trade_date"] == eff_str else "previous"
     out["live"] = live
     out["live_flag"] = live_flag
+    # 盘中实时评分：用同一评分引擎对实时报价重算（与盘前/回测同源）
+    live_scores = {}
+    if quotes:
+        try:
+            live_scores = _recompute_live_scores(shown, quotes, _params_from_payload(shown))
+        except Exception:
+            live_scores = {}
+    out["live_scores"] = live_scores
+    out["live_score_flag"] = bool(live_scores)
     out["updated_at"] = _now()
     return out
 
@@ -163,12 +246,41 @@ def api_stock(code: str):
         fund = None
     if info is None and kl is None:
         raise HTTPException(status_code=404, detail=f"未找到股票 {code} 的静态数据")
+    # 盘中实时评分：若该股在今日推荐中（带结构特征），用实时报价重算同一引擎
+    live_score = None
+    if live and info and info.get("features"):
+        try:
+            params = _params_from_payload(loaders.results())
+            feat_d = dict(info.get("features") or {})
+            if live.get("最新价") is not None:
+                feat_d["price"] = live["最新价"]
+            if live.get("量比") is not None:
+                feat_d["vol_ratio"] = live["量比"]
+            if live.get("涨跌幅") is not None:
+                feat_d["pct_open"] = live["涨跌幅"]
+            if live.get("成交额") is not None:
+                feat_d["auction_amount"] = live["成交额"]
+            if live.get("成交量") is not None:
+                feat_d["auction_volume"] = live["成交量"]
+            feat = StockFeatures(**{k: feat_d.get(k) for k in StockFeatures.__dataclass_fields__})
+            res = score_stock(feat, params)
+            base = float(info.get("评分") or 0.0)
+            live_score = {
+                "score": res["total"],
+                "delta": round(res["total"] - base, 2),
+                "dimensions": res["dimensions"],
+                "risk_factor": res["risk_factor"],
+                "risk_note": res.get("risk_note", "风险中性"),
+            }
+        except Exception:
+            live_score = None
     return {
         "code": code,
         "info": info,
         "kline": kl,
         "live": live,
         "fund_flow": fund,
+        "live_score": live_score,
         "live_flag": live_flag,
         "updated_at": _now(),
     }
