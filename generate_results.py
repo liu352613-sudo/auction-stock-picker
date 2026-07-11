@@ -28,6 +28,7 @@ from src.stock_picker import (
     _fetch_stock_hist_robust,
     _bt_demo_hist,
 )
+from src.data_service import data_service
 from generate_snapshot import snapshot
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -71,10 +72,9 @@ INDEX_FALLBACK = [
 
 
 def fetch_indices():
-    """实时拉取主要指数行情（akshare）。返回 (list, live)。"""
+    """实时拉取主要指数行情（经统一 DataService）。返回 (list, live)。"""
     try:
-        import akshare as ak
-        df = ak.stock_zh_index_spot_em()
+        df = data_service.index_spot_em()
         name_col = "指数名称" if "指数名称" in df.columns else df.columns[1]
         pool = {}
         for _, r in df.iterrows():

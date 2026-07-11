@@ -27,11 +27,16 @@ import json
 import os
 import sys
 import time
-import subprocess
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+# 统一数据服务层：本项目唯一允许访问 AkShare 的入口（页面/策略不再直接 import akshare）
+try:
+    from .data_service import data_service
+except ImportError:  # 作为脚本 `python src/stock_picker.py` 运行时
+    from data_service import data_service
 
 # ----------------------------------------------------------------------------
 # 配置常量
@@ -118,19 +123,8 @@ def log(msg):
 
 
 def ensure_deps():
-    """确保 akshare/pandas/numpy 可用，缺失时尝试自动安装。"""
-    try:
-        import akshare  # noqa: F401
-        return
-    except ImportError:
-        log("未检测到 akshare，尝试自动安装依赖 (akshare pandas numpy)...")
-        try:
-            subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", "--quiet", "akshare", "pandas", "numpy"]
-            )
-            log("依赖安装完成。")
-        except Exception as e:  # pragma: no cover
-            log(f"自动安装失败: {e}；请手动执行: pip install akshare pandas numpy")
+    """确保 akshare/pandas/numpy 可用，缺失时尝试自动安装（委托 DataService）。"""
+    data_service.ensure_deps()
 
 
 def _safe_num(val):
@@ -152,13 +146,11 @@ def get_market_temperature():
         "index_avg": 0.0, "note": "",
     }
     try:
-        import akshare as ak
-
         # (1) 指数表现 (40 分)
         try:
             # 沪深重要指数 包含 沪深300/上证指数/深证成指/创业板指 等
             # 改用新浪财经接口（海外服务器对东方财富常被拒）
-            idx = ak.stock_zh_index_spot_sina()
+            idx = data_service.index_spot_sina()
             targets = {}
             for _, row in idx.iterrows():
                 name = str(row.get("名称", ""))
@@ -180,7 +172,7 @@ def get_market_temperature():
 
         # (2) 涨跌比 (35 分)
         try:
-            spot = ak.stock_zh_a_spot()
+            spot = data_service.a_spot()
             pct = pd.to_numeric(spot["涨跌幅"], errors="coerce")
             up = int((pct > 0).sum())
             down = int((pct < 0).sum())
@@ -327,8 +319,6 @@ def get_stock_pool():
     带重试：重试 3 次、每次间隔 3 秒、模拟浏览器 UA。
     若所有尝试均失败，打印警告并返回空 DataFrame。
     """
-    import akshare as ak
-
     headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -339,9 +329,8 @@ def get_stock_pool():
     for attempt in range(1, 4):  # 重试 3 次
         try:
             # stock_zh_a_spot_em 内部已带 UA；此处额外兜底设置环境变量 UA
-            import os
             os.environ.setdefault("HTTP_USER_AGENT", headers["User-Agent"])
-            df = ak.stock_zh_a_spot_em()
+            df = data_service.a_spot_em()
             if df is None or len(df) == 0:
                 raise ValueError("东方财富接口返回空数据")
             # 打印实际返回列名，便于核对接口字段（尤其量比）
@@ -364,9 +353,8 @@ def get_stock_pool():
 
 def get_new_stock_codes(days=NEW_STOCK_DAYS):
     """返回上市不足 days 日的新股代码集合。"""
-    import akshare as ak
     try:
-        new_df = ak.stock_zh_a_new()
+        new_df = data_service.new_stock()
         new_df["上市日期"] = pd.to_datetime(new_df["上市日期"], errors="coerce")
         cutoff = pd.Timestamp.now().normalize() - pd.Timedelta(days=days)
         mask = new_df["上市日期"] >= cutoff
@@ -477,9 +465,8 @@ def calc_momentum_score(price, vol_ratio, pct_change, ma60, market_pct,
 # ----------------------------------------------------------------------------
 def get_industry(code):
     """获取个股所属行业板块。"""
-    import akshare as ak
     try:
-        info = ak.stock_individual_info_em(symbol=str(code))
+        info = data_service.individual_info(code)
         d = {}
         for _, r in info.iterrows():
             d[str(r.iloc[0])] = r.iloc[1]
@@ -493,9 +480,8 @@ def get_stock_profile(code):
 
     总市值单位与 AkShare 一致（元）。
     """
-    import akshare as ak
     try:
-        info = ak.stock_individual_info_em(symbol=str(code))
+        info = data_service.individual_info(code)
         d = {}
         for _, r in info.iterrows():
             d[str(r.iloc[0])] = r.iloc[1]
@@ -794,59 +780,26 @@ BT_CACHE_SUBDIR = ".bt_cache"
 
 def get_backtest_universe(scope="all"):
     """返回回测股票池 DataFrame(代码, 名称)。scope='all' 取全A主板/创业板/科创板。"""
-    import akshare as ak
     try:
-        df = ak.stock_info_a_code_name()
+        df = data_service.info_a_code_name()
         df = df.rename(columns={df.columns[0]: "代码", df.columns[1]: "名称"})
     except Exception:
-        df = ak.stock_zh_a_spot()[["代码", "名称"]]
+        df = data_service.a_spot()[["代码", "名称"]]
     df["代码"] = df["代码"].astype(str)
     df = df[df["代码"].str.startswith(BOARD_PREFIX)].copy()
     return df.reset_index(drop=True)
 
 
 def _fetch_stock_hist_robust(code, adjust="qfq", start=None, end=None):
-    """获取个股日线，优先 eastmoney(stock_zh_a_hist)，失败回退 sina(stock_zh_a_daily)。
+    """获取个股日线，经统一 DataService（东财优先，失败回退新浪）。
 
     返回标准列 DataFrame(日期,开盘,收盘,最高,最低,成交量,成交额) 升序；失败返回空 DataFrame。
     start/end 为 'YYYY-MM-DD' 字符串或 None。
     """
-    import akshare as ak
     cols = ["日期", "开盘", "收盘", "最高", "最低", "成交量", "成交额"]
     sd = start or (datetime.date.today() - datetime.timedelta(days=400)).isoformat()
     ed = end or datetime.date.today().isoformat()
-    sd_f, ed_f = sd.replace("-", ""), ed.replace("-", "")
-    # 1) eastmoney（用户真实环境通常可达）
-    try:
-        h = ak.stock_zh_a_hist(symbol=str(code), period="daily",
-                               start_date=sd_f, end_date=ed_f, adjust=adjust)
-        if h is not None and len(h):
-            h = h[cols].copy()
-            h["日期"] = pd.to_datetime(h["日期"])
-            for c in ("开盘", "收盘", "最高", "最低", "成交量", "成交额"):
-                h[c] = pd.to_numeric(h[c], errors="coerce")
-            return h.sort_values("日期").reset_index(drop=True)
-    except Exception:
-        log(f"  [eastmoney hist 失败, 回退 sina] {code}")
-    # 2) sina（备用源，部分网络环境下 eastmoney 被掐时仍可用）
-    try:
-        prefix = "sh" if str(code).startswith(("60", "68", "90", "88")) else "sz"
-        sym = prefix + str(code).zfill(6)
-        d = ak.stock_zh_a_daily(symbol=sym, adjust=adjust)
-        if d is None or len(d) == 0:
-            return pd.DataFrame()
-        d = d.rename(columns={"date": "日期", "open": "开盘", "high": "最高", "low": "最低",
-                              "close": "收盘", "volume": "成交量", "amount": "成交额"})
-        d["日期"] = pd.to_datetime(d["日期"])
-        for c in ("开盘", "收盘", "最高", "最低", "成交量", "成交额"):
-            d[c] = pd.to_numeric(d[c], errors="coerce")
-        d = d.sort_values("日期")
-        st, en = pd.Timestamp(sd), pd.Timestamp(ed)
-        d = d[(d["日期"] >= st) & (d["日期"] <= en)]
-        return d.reset_index(drop=True)
-    except Exception:
-        log(f"  [sina daily 失败] {code}")
-        return pd.DataFrame()
+    return data_service.stock_hist(code, sd, ed, adjust)
 
 
 def _bt_fetch_hist(code, cache_dir, start, end, adjust="qfq"):
@@ -872,12 +825,11 @@ def _bt_fetch_hist(code, cache_dir, start, end, adjust="qfq"):
 
 def get_daily_market_pct(start, end):
     """大盘每日平均涨跌幅(%)序列，作为动态阈值的 market_pct。失败返回空 Series。"""
-    import akshare as ak
     try:
         syms = ["sh000300", "sh000001", "sz399001", "sz399006"]
         frames = []
         for sym in syms:
-            d = ak.stock_zh_index_daily(symbol=sym)
+            d = data_service.index_daily(sym)
             d = d.rename(columns={"date": "日期", "close": "收盘"})
             d["日期"] = pd.to_datetime(d["日期"])
             d["ret"] = pd.to_numeric(d["收盘"], errors="coerce").pct_change() * 100

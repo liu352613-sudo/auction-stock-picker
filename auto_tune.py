@@ -28,39 +28,21 @@ from pathlib import Path
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
-import akshare as ak
 import pandas as pd
 from src import stock_picker as sp
+from src.data_service import data_service
 
 # ---------------------------------------------------------------------------
-# 强制新浪数据源（沙箱东财被掐）
+# 强制新浪数据源（沙箱东财被掐）：统一经 DataService，不再 monkeypatch akshare
 # ---------------------------------------------------------------------------
-def _em_raise(*a, **k):
-    raise RuntimeError("eastmoney blocked in sandbox -> force sina fallback")
-
-
-ak.stock_zh_a_hist = _em_raise
+data_service.force_sina(True)  # stock_hist 只走新浪；universe 用新浪代码表
 
 
 def get_backtest_universe_sina(scope="all"):
     """用新浪代码表重建股票池（原 get_backtest_universe 只用东财，无回退）。"""
-    parts = []
-    try:
-        sh = ak.stock_info_sh_name_code()[["证券代码", "证券简称"]].rename(
-            columns={"证券代码": "代码", "证券简称": "名称"})
-        parts.append(sh)
-    except Exception as e:
-        print("  [warn] sh_name_code 失败:", e)
-    try:
-        sz = ak.stock_info_sz_name_code()[["A股代码", "A股简称"]].rename(
-            columns={"A股代码": "代码", "A股简称": "名称"})
-        parts.append(sz)
-    except Exception as e:
-        print("  [warn] sz_name_code 失败:", e)
-    if not parts:
-        return pd.DataFrame(columns=["代码", "名称"])
-    df = pd.concat(parts, ignore_index=True)
-    df["代码"] = df["代码"].astype(str).str.zfill(6)
+    df = data_service.universe_sina()
+    if df.empty:
+        return df
     df = df[df["代码"].str.startswith(sp.BOARD_PREFIX)].copy()
     return df.drop_duplicates("代码").reset_index(drop=True)
 
