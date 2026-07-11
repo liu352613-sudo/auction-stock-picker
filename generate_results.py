@@ -29,6 +29,7 @@ from src.stock_picker import (
     _bt_demo_hist,
 )
 from src.data_service import data_service
+from src.trading_calendar import effective_trade_date
 from generate_snapshot import snapshot
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -195,6 +196,7 @@ def build_payload(result, params_dict):
         "generated_at": result["generated_at"],
         "data_source": result["data_source"],
         "update_time": datetime.datetime.now().strftime("%H:%M"),
+        "trade_date": effective_trade_date().isoformat(),
         "params": params_dict,
         "temperature": temperature,
         "stocks": stocks_list,
@@ -236,10 +238,11 @@ def main():
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
 
-    # 历史推荐快照：写入 data/history/YYYY-MM-DD.json 并维护 history_index.json
-    # 每次生成结果都刷新「当日」快照（force），无论是否已存在
-    today = datetime.date.today().isoformat()
-    snapshot(out_path, today, force=True)
+    # 历史推荐快照：写入 data/history/<生效交易日>.json 并维护 history_index.json
+    # 每次生成结果都刷新该交易日快照（force），无论是否已存在；
+    # 周末/节假日/9:26 前会自动落到「最近/上一交易日」，与展示口径一致。
+    eff_date = effective_trade_date().isoformat()
+    snapshot(out_path, eff_date, force=True)
 
     print(f"已生成: {out_path}")
     print(f"  数据来源: {payload['data_source']}")

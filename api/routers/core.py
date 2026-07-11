@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from api import loaders
 from src.data_service import data_service
 from src.stock_picker import StrategyParams, get_default_params
+from src.trading_calendar import effective_trade_date
 
 router = APIRouter()
 
@@ -59,9 +60,26 @@ def api_market():
 # ---------------------------------------------------------------------------
 @router.get("/api/recommend")
 def api_recommend():
-    """今日推荐。返回静态选股结果，并附带实时盘中报价（涨跌幅/最新价/成交量/成交额/量比）。"""
+    """今日推荐。返回「生效交易日」的选股结果，并附带实时盘中报价。
+
+    生效交易日由统一交易日历决定：周末/节假日→最近交易日；交易日 09:26 前→
+    上一交易日；09:26 后→当天。若 results.json 的 trade_date 与生效日不一致，
+    优先读取该生效日的历史快照，保证展示口径与首页/历史完全一致。
+    """
     base = loaders.results()
-    codes = [str(s.get("代码")) for s in base.get("stocks", []) or []]
+    eff = effective_trade_date()
+    eff_str = eff.isoformat()
+    base_trade_date = base.get("trade_date")
+
+    # 选取要展示的静态底稿：默认用最新 results.json；若其日期与生效日不符，
+    # 且存在对应生效日的历史快照，则改用快照（更精确）。
+    shown = base
+    if base_trade_date != eff_str:
+        snap = loaders.history_snapshot(eff_str)
+        if snap and snap.get("stocks"):
+            shown = snap
+
+    codes = [str(s.get("代码")) for s in shown.get("stocks", []) or []]
     live = None
     live_flag = False
     try:
@@ -71,7 +89,10 @@ def api_recommend():
             live_flag = True
     except Exception:
         live = None
-    out = dict(base)
+    out = dict(shown)
+    out["trade_date"] = shown.get("trade_date") or base_trade_date or eff_str
+    out["effective_date"] = eff_str
+    out["data_freshness"] = "today" if out["trade_date"] == eff_str else "previous"
     out["live"] = live
     out["live_flag"] = live_flag
     out["updated_at"] = _now()
