@@ -63,7 +63,6 @@ h1 .icon{font-size:36px}
 .rk.top{background:#c0392b;color:#fff}
 .stk-name{font-weight:700;color:#1a1a2e}
 .stk-code{color:#aaa;font-size:11.5px;margin-left:5px;font-weight:400}
-.sector{display:inline-block;padding:1px 9px;border-radius:10px;background:#eef2f7;color:#5a6b7b;font-size:11.5px}
 .price{font-weight:700;font-size:14px}
 .chg{font-weight:700;font-size:13px}
 .score{font-weight:800;font-size:14px;color:#e67e22}
@@ -72,22 +71,6 @@ h1 .icon{font-size:36px}
 .reco-hot{background:#fde8e8;color:#c0392b}.reco-mid{background:#fff3e0;color:#e67e22}
 .reco-low{background:#e8f0fe;color:#2a6fdb}.reco-no{background:#eee;color:#999}
 .turnover{color:#555}
-.btn-detail{
-  padding:3px 12px;border:1px solid #ddd;border-radius:12px;font-size:11.5px;
-  cursor:pointer;background:#fff;color:#666;transition:.15s;
-}
-.btn-detail:hover{border-color:#c0392b;color:#c0392b}
-
-/* 指数栏 */
-.idx-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
-.idx-card{
-  flex:1;min-width:120px;background:#f8f9fa;border-radius:10px;padding:12px 14px;
-  text-align:center;
-}
-.idx-name{font-size:11.5px;color:#888;margin-bottom:3px}
-.idx-val{font-size:18px;font-weight:800;color:#1a1a2e;margin-bottom:2px}
-.idx-diff{font-size:12.5px;font-weight:600}
-.idx-up{color:#e74c3c}.idx-down{color:#27ae60}
 
 .footer-risk{
   background:#fffaf0;border-left:4px solid #e65100;color:#bf360c;
@@ -108,12 +91,11 @@ h1 .icon{font-size:36px}
     <div id="status"></div>
 
     <div id="resultArea" class="result-area hidden">
-      <div class="idx-bar" id="idxBar"></div>
       <div class="mkt-strip" id="mktStrip"></div>
       <table class="npcs-table" id="npcsTable">
         <thead><tr>
-          <th>排名</th><th>名称(代码)</th><th>板块</th><th>现价</th>
-          <th>涨跌幅</th><th>评分</th><th>建议</th><th>交易额</th><th>操作</th>
+          <th>排名</th><th>名称(代码)</th><th>现价</th>
+          <th>涨跌幅</th><th>评分</th><th>建议</th><th>交易额</th>
         </tr></thead>
         <tbody id="npcsBody"></tbody>
       </table>
@@ -144,26 +126,6 @@ function recoClass(d){
   return"reco-no";
 }
 
-// 指数栏（实时数据优先）
-const IDX_FALLBACK=[
-  {name:"上证指数",val:3996.16,diff:-40.43,pct:"-1.00%"},
-  {name:"深证成指",val:15046.67,diff:-352.06,pct:"-2.29%"},
-  {name:"创业板指",val:3842.73,diff:-175.44,pct:"-4.37%"},
-  {name:"科创50",val:2064.98,diff:-120.85,pct:"-5.53%"},
-  {name:"沪深300",val:4780.79,diff:-95.52,pct:"-1.96%"},
-];
-function renderIdxBar(){
-  const data=(appData&&appData.indices)||IDX_FALLBACK;
-  document.getElementById("idxBar").innerHTML=data.map(d=>{
-    const cls=d.diff>=0?"idx-up":"idx-down";
-    return`<div class="idx-card">
-      <div class="idx-name">${d.name}</div>
-      <div class="idx-val">${Number(d.val).toFixed(2)}</div>
-      <div class="idx-diff ${cls}">${Number(d.diff)>=0?"+":""}${Number(d.diff).toFixed(2)} ${d.pct}</div>
-    </div>`;
-  }).join("");
-}
-
 // 市场温度条
 function renderMktStrip(el,data){
   const t=data.temperature||{};
@@ -182,22 +144,13 @@ function renderNpcsTable(data){
       return`<tr>
         <td><span class="rk${s.排名<=3?' top':''}">${s.排名}</span></td>
         <td><span class="stk-name">${s.名称}</span><span class="stk-code">${s.代码}</span></td>
-        <td><span class="sector">${s.板块}</span></td>
         <td class="price ${cc}">${Number(s.现价).toFixed(2)}</td>
         <td class="chg ${cc}">${fmtChg(s.涨跌幅)}</td>
         <td class="score">${s.评分}</td>
         <td><span class="reco ${recoClass(s.买入程度)}">${s.建议}</span></td>
         <td class="turnover">${fmtTurnover(s.交易额)}</td>
-        <td><button class="btn-detail" onclick="showDetail('${s.代码}')">查看详情</button></td>
       </tr>`;}).
-    join(""):'<tr><td colspan="9" class="status-msg">暂无符合条件的个股</td></tr>';
-}
-
-// 详情弹窗
-function showDetail(code){
-  const s=(appData.stocks||[]).find(x=>x.代码===code);
-  if(!s)return;
-  alert(`${s.名称} (${s.代码})\n板块：${s.板块}\n现价：${s.现价} (${fmtChg(s.涨跌幅)})\n动能评分：${s.评分}\n建议：${s.建议}\n买入价：${s.买入价}  止盈：${s.止盈价}  止损：${s.止损价}\n量比：${s.量比}\n交易额：${fmtTurnover(s.交易额)}`);
+    join(""):'<tr><td colspan="7" class="status-msg">暂无符合条件的个股</td></tr>';
 }
 
 // 状态消息
@@ -217,7 +170,6 @@ async function loadData(){
     const d=await r.json();appData=d;
 
     // 渲染
-    renderIdxBar();
     renderMktStrip(document.getElementById("mktStrip"),d);
     renderNpcsTable(d);
 
