@@ -48,6 +48,68 @@ BOARD_PREFIX = ("60", "68", "00", "30")
 
 
 # ----------------------------------------------------------------------------
+# 策略参数（集中管理，支持自动调参与前端配置）
+# ----------------------------------------------------------------------------
+from dataclasses import dataclass, fields, asdict
+
+
+@dataclass
+class StrategyParams:
+    """竞价选股策略的全部可调参数。
+
+    默认值与上方历史常量一致；自动调参 / 前端配置通过 from_dict 构造。
+    """
+
+    # —— 初筛 ——
+    vol_ratio_min: float = 3.0            # 竞价量比下限
+    auction_amount_min: float = 5_000_000  # 竞价成交额下限 (元)
+    new_stock_days: int = 60             # 上市不足该天数视为新股剔除
+    # 动态开盘涨幅阈值: low=max(lo_base, market_pct+lo_offset); high=min(hi_base, market_pct+hi_offset)
+    threshold_lo_base: float = 2.0
+    threshold_hi_base: float = 6.0
+    threshold_lo_offset: float = 1.5
+    threshold_hi_offset: float = 6.0
+    # —— 风控 ——
+    take_profit: float = 0.05            # 止盈 5%
+    stop_loss: float = 0.03              # 止损 3%
+    sector_bonus: float = 5.0            # 板块效应加分
+    # —— 评分权重 (合计 100) ——
+    w_vol_ratio: float = 30.0            # 量比归一化权重
+    w_rel_market: float = 20.0           # 相对大盘权重
+    w_ma60_dev: float = 25.0             # 60日均线偏离权重
+    w_vol_energy: float = 25.0           # 量能比权重
+    vol_ratio_top: float = 5.0           # 量比归一化满分上限
+    ma60_dev_sweet: float = 0.05         # 均线偏离甜区下界
+    ma60_dev_max: float = 0.15           # 均线偏离甜区上界
+    vol_energy_lo: float = 0.03          # 量能比下界
+    vol_energy_hi: float = 0.10          # 量能比上界
+    # —— 过滤开关 ——
+    filter_st: bool = True               # 剔除 ST
+    filter_new_stock: bool = True        # 剔除新股
+    filter_suspended: bool = True        # 剔除停牌
+    filter_limit_up: bool = True         # 剔除已封板涨停股(无法买入)
+    # —— 买入程度阈值 ——
+    level_strong: float = 80.0
+    level_mid: float = 60.0
+    level_cautious: float = 40.0
+
+    @classmethod
+    def from_dict(cls, d):
+        if not d:
+            return cls()
+        valid = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in d.items() if k in valid})
+
+    def to_dict(self):
+        return asdict(self)
+
+
+def get_default_params():
+    """返回默认策略参数（dataclass 默认值）。"""
+    return StrategyParams()
+
+
+# ----------------------------------------------------------------------------
 # 工具函数
 # ----------------------------------------------------------------------------
 def log(msg):
@@ -239,14 +301,16 @@ def _parse_north(north):
 # ----------------------------------------------------------------------------
 # 模块 2: 动态阈值
 # ----------------------------------------------------------------------------
-def calc_dynamic_threshold(market_pct):
-    """动态开盘涨幅阈值。
+def calc_dynamic_threshold(market_pct, params=None):
+    """动态开盘涨幅阈值（可配置）。
 
-    下限 = max(2%, 大盘涨幅+1.5%)
-    上限 = min(6%, 大盘涨幅+6%)
+    下限 = max(threshold_lo_base, 大盘涨幅 + threshold_lo_offset)
+    上限 = min(threshold_hi_base, 大盘涨幅 + threshold_hi_offset)
     """
-    low = max(2.0, (market_pct or 0.0) + 1.5)
-    high = min(6.0, (market_pct or 0.0) + 6.0)
+    p = params or StrategyParams()
+    mp = market_pct or 0.0
+    low = max(p.threshold_lo_base, mp + p.threshold_lo_offset)
+    high = min(p.threshold_hi_base, mp + p.threshold_hi_offset)
     if low > high:  # 极端行情保护
         low, high = high, low
     return round(low, 2), round(high, 2)
@@ -311,25 +375,32 @@ def get_new_stock_codes(days=NEW_STOCK_DAYS):
         return set()
 
 
-def filter_stocks(df, low, high, market_pct):
-    """初筛：量比、开盘涨幅(动态)、竞价成交额，剔除 ST/停牌。"""
+def filter_stocks(df, params, market_pct):
+    """初筛：量比、开盘涨幅(动态阈值)、竞价成交额，剔除 ST/停牌/涨停板。
+
+    params: StrategyParams 实例（None 取默认）。
+    """
+    p = params or StrategyParams()
+    low, high = calc_dynamic_threshold(market_pct, p)
     df = df.copy()
     for col in ("涨跌幅", "量比", "成交额", "成交量", "最新价"):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     name = df["名称"].astype(str)
-    # 剔除 ST
-    df = df[~name.str.contains("ST", case=False, na=False)]
-    # 剔除停牌: 涨跌幅缺失 或 成交量为 0
-    df = df[df["涨跌幅"].notna()]
-    df = df[df["成交量"].fillna(0) > 0]
-    # 初筛条件
+    if p.filter_st:
+        df = df[~name.str.contains("ST", case=False, na=False)]
+    if p.filter_suspended:
+        df = df[df["涨跌幅"].notna()]
+        df = df[df["成交量"].fillna(0) > 0]
+    if p.filter_limit_up:
+        # 开盘即涨停 / 接近涨停(>=9.5%) 无法买入，剔除
+        df = df[df["涨跌幅"] < 9.5]
     cond = (
-        (df["量比"] >= VOL_RATIO_MIN)
+        (df["量比"] >= p.vol_ratio_min)
         & (df["涨跌幅"] >= low)
         & (df["涨跌幅"] <= high)
-        & (df["成交额"] >= AUCTION_AMOUNT_MIN)
+        & (df["成交额"] >= p.auction_amount_min)
     )
     return df[cond].copy()
 
@@ -352,42 +423,43 @@ def get_stock_hist(code):
 
 
 def calc_momentum_score(price, vol_ratio, pct_change, ma60, market_pct,
-                        auction_volume, prev_volume):
-    """动能评分 (满分100)。返回 (总分, 明细dict)。"""
-    # 1) 竞价量比归一化 (30)
-    if vol_ratio >= 5:
-        s1 = 30.0
-    elif vol_ratio >= 3:
-        s1 = 30.0 * (vol_ratio - 3) / (5 - 3)
+                        auction_volume, prev_volume, params=None):
+    """动能评分 (满分100，权重可配置)。返回 (总分, 明细dict)。"""
+    p = params or StrategyParams()
+    # 1) 竞价量比归一化
+    if vol_ratio >= p.vol_ratio_top:
+        s1 = p.w_vol_ratio
+    elif vol_ratio >= p.vol_ratio_min:
+        s1 = p.w_vol_ratio * (vol_ratio - p.vol_ratio_min) / (p.vol_ratio_top - p.vol_ratio_min)
     else:
         s1 = 0.0
 
-    # 2) 相对大盘涨幅 (20)
+    # 2) 相对大盘涨幅
     diff = (pct_change or 0.0) - (market_pct or 0.0)
     if diff >= 2.0:
-        s2 = 20.0
+        s2 = p.w_rel_market
     elif diff > 0:
-        s2 = 20.0 * diff / 2.0
+        s2 = p.w_rel_market * diff / 2.0
     else:
         s2 = 0.0
 
-    # 3) 60日均线偏离度 (25)
+    # 3) 60日均线偏离度
     dev = ((price - ma60) / ma60) if (ma60 and ma60 > 0) else 0.0
-    if dev >= 0.15:
-        s3 = max(0.0, 25.0 - (dev - 0.15) * 100.0)
-    elif dev >= 0.05:
-        s3 = 25.0
+    if dev >= p.ma60_dev_max:
+        s3 = max(0.0, p.w_ma60_dev - (dev - p.ma60_dev_max) * 100.0)
+    elif dev >= p.ma60_dev_sweet:
+        s3 = p.w_ma60_dev
     elif dev >= 0:
-        s3 = 25.0 * dev / 0.05
+        s3 = p.w_ma60_dev * dev / p.ma60_dev_sweet
     else:
         s3 = 0.0
 
-    # 4) 竞价成交量 / 昨日全天成交量 (25)
+    # 4) 竞价成交量 / 昨日全天成交量
     ratio = (auction_volume / prev_volume) if (prev_volume and prev_volume > 0) else 0.0
-    if ratio >= 0.10:
-        s4 = 25.0
-    elif ratio >= 0.03:
-        s4 = 25.0 * (ratio - 0.03) / (0.10 - 0.03)
+    if ratio >= p.vol_energy_hi:
+        s4 = p.w_vol_energy
+    elif ratio >= p.vol_energy_lo:
+        s4 = p.w_vol_energy * (ratio - p.vol_energy_lo) / (p.vol_energy_hi - p.vol_energy_lo)
     else:
         s4 = 0.0
 
@@ -416,16 +488,33 @@ def get_industry(code):
         return "未知"
 
 
+def get_stock_profile(code):
+    """获取个股行业与总市值。返回 (行业, 总市值元)。失败返回 ('未知', 0.0)。
+
+    总市值单位与 AkShare 一致（元）。
+    """
+    import akshare as ak
+    try:
+        info = ak.stock_individual_info_em(symbol=str(code))
+        d = {}
+        for _, r in info.iterrows():
+            d[str(r.iloc[0])] = r.iloc[1]
+        return d.get("行业", "未知"), _safe_num(d.get("总市值", 0))
+    except Exception:
+        return "未知", 0.0
+
+
 # ----------------------------------------------------------------------------
 # 模块 6: 板块效应加分
 # ----------------------------------------------------------------------------
-def add_sector_bonus(df):
-    """同一板块 >=2 只进入初筛，则该板块所有股票统一 +5 分。"""
+def add_sector_bonus(df, params=None):
+    """同一板块 >=2 只进入初筛，则该板块所有股票统一加分（可配置）。"""
+    p = params or StrategyParams()
     df = df.copy()
     counts = df["行业"].value_counts()
     multi = set(counts[counts >= 2].index.tolist())
     df["板块加分"] = 0.0
-    df.loc[df["行业"].isin(multi), "板块加分"] = SECTOR_BONUS
+    df.loc[df["行业"].isin(multi), "板块加分"] = p.sector_bonus
     df["动能评分"] = (df["动能评分"] + df["板块加分"]).clip(upper=100.0)
     return df, multi
 
@@ -433,12 +522,13 @@ def add_sector_bonus(df):
 # ----------------------------------------------------------------------------
 # 买入程度 & 风控降级
 # ----------------------------------------------------------------------------
-def recommend_level(score):
-    if score >= 80:
+def recommend_level(score, params=None):
+    p = params or StrategyParams()
+    if score >= p.level_strong:
         return "强烈推荐"
-    elif score >= 60:
+    elif score >= p.level_mid:
         return "中等"
-    elif score >= 40:
+    elif score >= p.level_cautious:
         return "谨慎"
     return "不推荐"
 
@@ -513,7 +603,8 @@ def generate_report(temp, res_df, low, high, today, multi_sectors):
 # ----------------------------------------------------------------------------
 # 主流程
 # ----------------------------------------------------------------------------
-def _enrich_and_score(filtered, market_pct):
+def _enrich_and_score(filtered, market_pct, params=None):
+    p = params or StrategyParams()
     records = []
     cache = {}
     for _, row in filtered.iterrows():
@@ -530,19 +621,25 @@ def _enrich_and_score(filtered, market_pct):
         ma60, prev_vol = cache[code]
 
         score, detail = calc_momentum_score(price, vol_ratio, pct, ma60, market_pct,
-                                            auction_vol, prev_vol)
-        industry = row.get("行业")
+                                            auction_vol, prev_vol, p)
+        industry, mv = get_stock_profile(code)
         if not industry or str(industry).strip() in ("", "未知", "nan"):
-            industry = get_industry(code)
+            industry = row.get("行业", "未知")
             time.sleep(0.02)
 
+        # 涨停价（用于前端提示买入难度）：主板 10%、创业板/科创板 20%
+        limit_pct = 0.20 if code.startswith(("30", "68")) else 0.10
+        prev_close = price / (1 + pct / 100.0) if pct != 0 else price
+        limit_up_price = round(prev_close * (1 + limit_pct), 2)
+
         buy = round(price, 2)
-        tp = round(price * (1 + TAKE_PROFIT), 2)
-        sl = round(price * (1 - STOP_LOSS), 2)
+        tp = round(price * (1 + p.take_profit), 2)
+        sl = round(price * (1 - p.stop_loss), 2)
         records.append({
             "代码": code, "名称": name, "动能评分": score,
             "买入价": buy, "止盈价": tp, "止损价": sl,
-            "行业": industry, "量比": round(vol_ratio, 2),
+            "行业": industry, "市值": round(float(mv), 2), "涨停价": limit_up_price,
+            "量比": round(vol_ratio, 2),
             "开盘涨幅%": round(pct, 2),
             "成交额": _safe_num(row.get("成交额", 0)),
             "最新价": round(price, 2),
@@ -551,11 +648,13 @@ def _enrich_and_score(filtered, market_pct):
     return pd.DataFrame(records)
 
 
-_EMPTY_COLS = ["代码", "名称", "动能评分", "买入价", "止盈价", "止损价", "行业", "买入程度"]
+_EMPTY_COLS = ["代码", "名称", "动能评分", "买入价", "止盈价", "止损价",
+              "行业", "市值", "涨停价", "买入程度"]
 
 
-def run(output_dir, demo=False):
+def run(output_dir, demo=False, params=None):
     ensure_deps()
+    params = params or StrategyParams()
     today = datetime.date.today()
     log("开始竞价选股流程...")
 
@@ -565,7 +664,7 @@ def run(output_dir, demo=False):
         temp = get_market_temperature()
         log(f"市场温度: {temp['total']}/100 ({temp['level']})，建议仓位 {temp['position']}%")
         market_pct = temp["market_pct"]
-        low, high = calc_dynamic_threshold(market_pct)
+        low, high = calc_dynamic_threshold(market_pct, params)
         log(f"动态开盘涨幅阈值: {low}% ~ {high}%")
 
         if demo:
@@ -573,17 +672,17 @@ def run(output_dir, demo=False):
             log("DEMO 模式：使用内置样例数据。")
         else:
             pool = get_stock_pool()
-            new_codes = get_new_stock_codes(NEW_STOCK_DAYS)
+            new_codes = get_new_stock_codes(params.new_stock_days)
             pool = pool[~pool["代码"].astype(str).isin(new_codes)]
-            filtered = filter_stocks(pool, low, high, market_pct)
+            filtered = filter_stocks(pool, params, market_pct)
             log(f"初筛通过: {len(filtered)} 只")
 
-        res_df = _enrich_and_score(filtered, market_pct) if len(filtered) > 0 else pd.DataFrame()
+        res_df = _enrich_and_score(filtered, market_pct, params) if len(filtered) > 0 else pd.DataFrame()
 
         if len(res_df) > 0:
-            res_df, multi = add_sector_bonus(res_df)
+            res_df, multi = add_sector_bonus(res_df, params)
             res_df = res_df.sort_values("动能评分", ascending=False).reset_index(drop=True)
-            res_df["买入程度"] = res_df["动能评分"].apply(recommend_level)
+            res_df["买入程度"] = res_df["动能评分"].apply(lambda s: recommend_level(s, params))
             if temp["level"] in ("寒冷", "极寒"):
                 res_df["买入程度"] = res_df["买入程度"].replace(DOWNGRADE)
                 log("温度寒冷/极寒：买入程度已统一降级。")
@@ -638,12 +737,13 @@ def _demo_temp():
     }
 
 
-def run_demo(output_dir):
+def run_demo(output_dir, params=None):
     """使用内置样例数据跑通全流程，便于离线验证。"""
+    p = params or StrategyParams()
     today = datetime.date.today()
     temp = _demo_temp()
     market_pct = temp["market_pct"]
-    low, high = calc_dynamic_threshold(market_pct)
+    low, high = calc_dynamic_threshold(market_pct, p)
     demo_df = _demo_pool()
     hist_map = {
         "000001": (11.5, 1_200_000), "600519": (1600.0, 400),
@@ -656,7 +756,7 @@ def run_demo(output_dir):
         price = _safe_num(row["最新价"]); vr = _safe_num(row["量比"])
         pct = _safe_num(row["涨跌幅"]); av = _safe_num(row["成交量"])
         ma60, pv = hist_map.get(code, (price * 0.95, av * 2))
-        score, detail = calc_momentum_score(price, vr, pct, ma60, market_pct, av, pv)
+        score, detail = calc_momentum_score(price, vr, pct, ma60, market_pct, av, pv, p)
         recs.append({
             "代码": code, "名称": row["名称"], "动能评分": score,
             "买入价": round(price, 2), "止盈价": round(price * (1 + TAKE_PROFIT), 2),
@@ -665,9 +765,9 @@ def run_demo(output_dir):
             "最新价": round(price, 2),
         })
     res_df = pd.DataFrame(recs)
-    res_df, multi = add_sector_bonus(res_df)
+    res_df, multi = add_sector_bonus(res_df, p)
     res_df = res_df.sort_values("动能评分", ascending=False).reset_index(drop=True)
-    res_df["买入程度"] = res_df["动能评分"].apply(recommend_level)
+    res_df["买入程度"] = res_df["动能评分"].apply(lambda s: recommend_level(s, p))
     report = generate_report(temp, res_df, low, high, today, multi)
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -783,8 +883,9 @@ def get_daily_market_pct(start, end):
         return pd.Series(dtype=float)
 
 
-def _bt_trades_for_stock(hist, code, name, mkt_pct, start=None, end=None):
+def _bt_trades_for_stock(hist, code, name, mkt_pct, params=None, start=None, end=None):
     """对单只股票遍历每个交易日，套用初筛+评分，T+1次日开盘卖出。返回 trade dict 列表。"""
+    p = params or StrategyParams()
     if hist is None or len(hist) < 62:
         return []
     o = hist["开盘"].to_numpy(dtype=float)
@@ -818,29 +919,29 @@ def _bt_trades_for_stock(hist, code, name, mkt_pct, start=None, end=None):
         vol5 = np.mean(v[i - 5:i]) if i >= 5 else vol_i
         vol_ratio = vol_i / vol5 if vol5 > 0 else 0.0
         amount_i = amt[i] if np.isfinite(amt[i]) else 0.0
-        if amount_i < AUCTION_AMOUNT_MIN:
+        if amount_i < p.auction_amount_min:
             continue
         if is_st:
             continue
         mp = float(mkt_pct.get(dstr, 0.0)) if (mkt_pct is not None and len(mkt_pct)) else 0.0
-        low, high = calc_dynamic_threshold(mp)
+        low, high = calc_dynamic_threshold(mp, p)
         if not (low <= pct_open <= high):
             continue
-        if vol_ratio < VOL_RATIO_MIN:
+        if vol_ratio < p.vol_ratio_min:
             continue
         ma60_win = c[i - 60:i]
         ma60 = float(np.mean(ma60_win)) if len(ma60_win) else 0.0
         prev_vol = float(v[i - 1]) if np.isfinite(v[i - 1]) else 0.0
-        score, _ = calc_momentum_score(open_i, vol_ratio, pct_open, ma60, mp, vol_i, prev_vol)
+        score, _ = calc_momentum_score(open_i, vol_ratio, pct_open, ma60, mp, vol_i, prev_vol, p)
         next_open = o[i + 1]
         if not np.isfinite(next_open) or next_open <= 0:
             continue
         ret = (next_open - open_i) / open_i * 100.0
         max_up = (hi[i] - open_i) / open_i * 100.0 if np.isfinite(hi[i]) else 0.0
         max_down = (lo[i] - open_i) / open_i * 100.0 if np.isfinite(lo[i]) else 0.0
-        hit_tp = max_up >= TAKE_PROFIT * 100
-        hit_sl = max_down <= -STOP_LOSS * 100
-        level = recommend_level(score)
+        hit_tp = max_up >= p.take_profit * 100
+        hit_sl = max_down <= -p.stop_loss * 100
+        level = recommend_level(score, p)
         cold = mp <= -1.0
         if cold:
             level = DOWNGRADE.get(level, level)
@@ -958,8 +1059,9 @@ def _bt_demo_hist(code):
     })
 
 
-def run_backtest(output_dir, scope="all", start=None, end=None, limit=None, demo=False):
+def run_backtest(output_dir, scope="all", start=None, end=None, limit=None, demo=False, params=None):
     ensure_deps()
+    params = params or StrategyParams()
     today = datetime.date.today()
     if not end:
         end = today.isoformat()
@@ -989,7 +1091,7 @@ def run_backtest(output_dir, scope="all", start=None, end=None, limit=None, demo
             time.sleep(0.05)
         if hist is None or len(hist) == 0:
             continue
-        ts = _bt_trades_for_stock(hist, code, name, mkt, start, end)
+        ts = _bt_trades_for_stock(hist, code, name, mkt, params, start, end)
         all_trades.extend(ts)
         if (idx + 1) % 50 == 0:
             log(f"已处理 {idx + 1}/{len(uni)} 只，命中 {len(all_trades)} 笔交易")
@@ -1039,18 +1141,34 @@ if __name__ == "__main__":
     ap.add_argument("--end", default=None, help="回测结束日期 YYYY-MM-DD")
     ap.add_argument("--limit", type=int, default=None, help="回测股票抽样上限(用于快速验证, 如 --limit 30)")
     ap.add_argument("--backtest-demo", action="store_true", help="用内置合成数据跑通回测流程(无需联网)")
+    ap.add_argument("--params", default=None,
+                    help="策略参数 JSON 文件路径 或 inline JSON 字符串，覆盖默认参数(自动调参/前端配置用)")
     args = ap.parse_args()
+
+    params = None
+    if args.params:
+        import json as _json
+        raw = args.params.strip()
+        try:
+            if raw.startswith("{"):
+                params = StrategyParams.from_dict(_json.loads(raw))
+            else:
+                with open(raw, "r", encoding="utf-8") as _f:
+                    params = StrategyParams.from_dict(_json.load(_f))
+            log(f"已加载自定义策略参数: {params.to_dict()}")
+        except Exception as e:
+            log(f"参数解析失败，使用默认参数: {e}")
 
     if args.backtest_demo:
         run_backtest(args.output_dir, scope=args.scope, start=args.start, end=args.end,
-                     limit=args.limit, demo=True)
+                     limit=args.limit, demo=True, params=params)
     elif args.backtest:
         run_backtest(args.output_dir, scope=args.scope, start=args.start, end=args.end,
-                     limit=args.limit, demo=False)
+                     limit=args.limit, demo=False, params=params)
     elif args.demo:
-        run_demo(args.output_dir)
+        run_demo(args.output_dir, params=params)
     else:
-        run(args.output_dir)
+        run(args.output_dir, params=params)
 
 
 # ----------------------------------------------------------------------------
@@ -1063,10 +1181,11 @@ class AuctionStockPicker:
     对外暴露 pick_stocks() 返回结构化结果(dict)，便于 Web 层渲染。
     """
 
-    def __init__(self, output_dir="./auction_reports"):
+    def __init__(self, output_dir="./auction_reports", params=None):
         self.output_dir = output_dir
+        self.params = params or StrategyParams()
 
-    def pick_stocks(self, demo=False):
+    def pick_stocks(self, demo=False, params=None):
         """执行一次选股，返回结构化 dict。
 
         返回:
@@ -1081,25 +1200,26 @@ class AuctionStockPicker:
         import datetime as _dt
         today = _dt.date.today()
 
+        params = params or self.params
         if demo:
             temp = _demo_temp()
             market_pct = temp["market_pct"]
-            low, high = calc_dynamic_threshold(market_pct)
+            low, high = calc_dynamic_threshold(market_pct, params)
             filtered = _demo_pool()
         else:
             temp = get_market_temperature()
             market_pct = temp["market_pct"]
-            low, high = calc_dynamic_threshold(market_pct)
+            low, high = calc_dynamic_threshold(market_pct, params)
             pool = get_stock_pool()
-            new_codes = get_new_stock_codes(NEW_STOCK_DAYS)
+            new_codes = get_new_stock_codes(params.new_stock_days)
             pool = pool[~pool["代码"].astype(str).isin(new_codes)]
-            filtered = filter_stocks(pool, low, high, market_pct)
+            filtered = filter_stocks(pool, params, market_pct)
 
         if len(filtered) > 0:
-            res_df = _enrich_and_score(filtered, market_pct)
-            res_df, _ = add_sector_bonus(res_df)
+            res_df = _enrich_and_score(filtered, market_pct, params)
+            res_df, _ = add_sector_bonus(res_df, params)
             res_df = res_df.sort_values("动能评分", ascending=False).reset_index(drop=True)
-            res_df["买入程度"] = res_df["动能评分"].apply(recommend_level)
+            res_df["买入程度"] = res_df["动能评分"].apply(lambda s: recommend_level(s, params))
             if temp["level"] in ("寒冷", "极寒"):
                 res_df["买入程度"] = res_df["买入程度"].replace(DOWNGRADE)
         else:
