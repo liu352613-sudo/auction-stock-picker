@@ -185,15 +185,7 @@
 
     .hidden { display: none !important; }
 
-    /* Run button in tab bar style */
-    .run-tab-btn {
-      flex: 1; padding: 12px 0; text-align: center; font-size: 14px; font-weight: 500;
-      cursor: pointer; color: #c0392b; border: 2px dashed #ffbaba;
-      border-radius: 10px; background: #fffafa;
-      transition: all .2s; margin-bottom: 18px;
-    }
-    .run-tab-btn:hover:not(:disabled) { background: #ffe8e8; border-color: #e74c3c; }
-    .run-tab-btn:disabled { opacity: .5; cursor: not-allowed; }
+    /* Loading spinner */
   </style>
 </head>
 <body>
@@ -217,8 +209,8 @@
   <main class="content">
     <h1 class="page-title">策略选股</h1>
 
-    <button class="run-tab-btn" id="runBtn">🔍 加载最新选股结果</button>
-    <div id="status"></div>
+    <!-- Auto-load on open; small refresh button in strategy info bar -->
+    <div id="status" style="margin-bottom:16px;"></div>
 
     <div id="resultArea" class="hidden">
 
@@ -399,8 +391,6 @@
 
   // ---- Main load ----
   async function loadData() {
-    const btn = document.getElementById("runBtn");
-    btn.disabled = true;
     showStatus("⏳ 正在加载最新选股结果…", "info");
     try {
       const resp = await fetch(DATA_URL + "?t=" + Date.now());
@@ -419,15 +409,14 @@
       showStatus("", "");
     } catch (e) {
       showStatus("⚠️ 无法获取实时数据，请检查网络或稍后重试（" + e.message + "）", "warn");
-    } finally {
-      btn.disabled = false;
-    }
+      showStatus("", "");
+    } catch (e) {
   }
 
-  // ---- Init ----
+  // ---- Init: auto-load on page open ----
   renderSidebar();
   renderIndices();
-  document.getElementById("runBtn").addEventListener("click", loadData);
+  loadData();  // Auto-load data immediately
 </script>
 </body>
 </html>
