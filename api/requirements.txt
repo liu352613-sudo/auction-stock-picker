@@ -1,0 +1,9 @@
+# 竞价选股系统 FastAPI 实时后端依赖
+# 安装: pip install -r api/requirements.txt
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9
+# 数据获取（统一经 src/data_service 封装）
+akshare>=1.12
+pandas>=2.0
+numpy>=1.24

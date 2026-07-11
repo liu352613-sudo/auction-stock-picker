@@ -9,4 +9,6 @@ data/tmp/
 # 回测/调参过程缓存（非交付物）
 auction_reports/.bt_cache/
 auction_reports/.tune_tmp/
+# 用户经 /api/config 保存的策略参数（运行时产物，非交付物）
+data/user_params.json
 .DS_Store
