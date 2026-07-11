@@ -178,6 +178,8 @@ def build_payload(result, params_dict):
             "止损价": round(float(to_native(r.get("止损价", 0)) or 0), 2),
             "量比": round(float(to_native(r.get("量比", 0)) or 0), 2),
             "评分明细": detail,
+            # 结构特征：供 API 实时重算盘中评分（日内字段会被 live quote 覆盖）
+            "features": to_native(r.get("features")) or {},
         })
     stocks_list.sort(key=lambda x: x["评分"], reverse=True)
     for i, s in enumerate(stocks_list):

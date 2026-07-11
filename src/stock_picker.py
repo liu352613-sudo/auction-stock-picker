@@ -673,6 +673,16 @@ def _enrich_and_score(filtered, market_pct, params=None):
             float_mv=float(mv), is_st=("ST" in str(name).upper()),
             market_pct=float(market_pct),
         )
+        # 真实主力资金流（近 5 日净流入均值），失败则留 0（维度得 0，绝不通分）
+        try:
+            ff_rows = data_service.fund_flow(code)
+            if ff_rows:
+                nets = [_safe_num(r.get("主力净流入-净额")) for r in ff_rows[-5:]]
+                nets = [x for x in nets if x != 0.0]
+                if nets:
+                    feat.fund_flow_5d_net = float(sum(nets) / len(nets))
+        except Exception:
+            pass
         result = score_stock(feat, p)
         score = result["total"]
 
@@ -693,6 +703,8 @@ def _enrich_and_score(filtered, market_pct, params=None):
             "成交额": auction_amt,
             "最新价": round(price, 2),
             "明细": _to_detail(result),
+            # 结构特征：供 API 盘中实时重算评分（量比/涨幅/竞价额等日内字段会被 live quote 覆盖）
+            "features": feat.to_dict(),
         })
     return pd.DataFrame(records)
 
@@ -810,13 +822,15 @@ def _enrich_demo(filtered, market_pct, params=None):
         ma5, ma10, ma20 = ma60 * 1.06, ma60 * 1.04, ma60 * 1.02
         vol = 0.35
         sec_avg_pct = mp + 1.5  # demo 假设所属板块略强于大盘
+        # demo 资金流：按竞价额放大作合成（仅用于演示「资金流」维度，明确标注 DEMO）
+        ff5 = _safe_num(row.get("成交额", 0)) * 3.0
         feat = StockFeatures(
             code=code, name=row["名称"], sector=row.get("行业", "未知"),
             price=price, vol_ratio=vr, pct_open=pct,
             auction_amount=_safe_num(row.get("成交额", 0)), auction_volume=av,
             ma60=ma60, ma20=ma20, ma10=ma10, ma5=ma5, prev_volume=pv,
             volatility=vol, sector_heat=_sector_heat_from_avg(sec_avg_pct, mp),
-            float_mv=5e10, is_st=False, market_pct=mp,
+            fund_flow_5d_net=ff5, float_mv=5e10, is_st=False, market_pct=mp,
         )
         result = score_stock(feat, p)
         recs.append({
@@ -826,6 +840,7 @@ def _enrich_demo(filtered, market_pct, params=None):
             "市值": round(float(row.get("市值", 0)), 2), "涨停价": round(price * 1.1, 2),
             "成交额": _safe_num(row.get("成交额", 0)),
             "最新价": round(price, 2), "明细": _to_detail(result),
+            "features": feat.to_dict(),
         })
     return pd.DataFrame(recs)
 
