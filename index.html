@@ -30,12 +30,17 @@ body{
 }
 .search-bar input:focus{border-color:#c0392b;background:#fff}
 .search-bar .si{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#bbb;font-size:13px}
-.top-tags{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.top-tag{
-  padding:4px 12px;border-radius:14px;font-size:12px;cursor:pointer;
-  border:1px solid #e4e4e4;background:#fff;color:#666;transition:.15s;white-space:nowrap;
+/* ===== Index Bar (指数栏) ===== */
+.idx-bar{display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.idx-card{
+  flex:1;min-width:130px;background:#fff;border-radius:10px;padding:14px 16px;
+  box-shadow:0 1px 3px rgba(0,0,0,.05);text-align:center;transition:.15s;
 }
-.top-tag:hover,.top-tag.active{border-color:#c0392b;color:#c0392b;background:#fef6f5}
+.idx-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.idx-name{font-size:12px;color:#888;margin-bottom:4px;font-weight:500}
+.idx-val{font-size:20px;font-weight:800;color:#1a1a2e;margin-bottom:2px}
+.idx-diff{font-size:13px;font-weight:600}
+.idx-up{color:#e74c3c}.idx-down{color:#27ae60}
 
 /* ===== Layout ===== */
 .main-layout{display:flex;max-width:1480px;margin:0 auto;padding:16px;gap:16px}
@@ -173,7 +178,6 @@ body{
   <div class="search-bar"><span class="si">🔍</span>
     <input type="text" placeholder="请输入股票名称或代码" />
   </div>
-  <div class="top-tags" id="topTags"></div>
 </div>
 
 <!-- ===== MAIN ===== -->
@@ -183,6 +187,7 @@ body{
 
 <!-- ==================== 概览 / 首页（npcs1983 主表） ==================== -->
 <section class="page-section active" id="page-overview">
+  <div class="idx-bar" id="idxBar"></div>
   <div class="mkt-strip" id="mktStrip"></div>
   <div class="panel">
     <div class="panel-head">
@@ -273,9 +278,24 @@ function renderSidebar(){
     `<div class="side-item${it.id==='overview'?' active':''}" onclick="switchPage('${it.id}')">${it.icon} ${it.name}${it.badge?`<span class="side-badge">${it.badge}</span>`:''}</div>`
   ).join("");
 }
-function renderTopTags(){
-  const tags=["热点","竞争激战","题区","空间赛道","航天机电","弱势跟涨","弱势跟空","红白破盘","情绪资金","金融","金属"];
-  document.getElementById("topTags").innerHTML=tags.map((t,i)=>`<span class="top-tag${i<2?' active':''}">${t}</span>`).join("");
+
+// ---- index bar (指数栏) ----
+const IDX_BAR_DATA=[
+  {name:"上证指数",val:3996.16,diff:-40.43,pct:"-1.00%"},
+  {name:"深证成指",val:15046.67,diff:-352.06,pct:"-2.29%"},
+  {name:"创业板指",val:3842.73,diff:-175.44,pct:"-4.37%"},
+  {name:"科创50",val:2064.98,diff:-120.85,pct:"-5.53%"},
+  {name:"沪深300",val:4780.79,diff:-95.52,pct:"-1.96%"},
+];
+function renderIdxBar(){
+  document.getElementById("idxBar").innerHTML=IDX_BAR_DATA.map(d=>{
+    const cls=d.diff>=0?"idx-up":"idx-down";
+    return`<div class="idx-card">
+      <div class="idx-name">${d.name}</div>
+      <div class="idx-val">${d.val.toFixed(2)}</div>
+      <div class="idx-diff ${cls}">${d.diff>=0?"+":""}${d.diff.toFixed(2)} ${d.pct}</div>
+    </div>`;
+  }).join("");
 }
 
 // ---- helpers ----
@@ -404,7 +424,7 @@ async function loadData(){
 }
 
 // ---- init ----
-renderSidebar();renderTopTags();switchPage("overview");loadData();
+renderSidebar();renderIdxBar();switchPage("overview");loadData();
 window.addEventListener("resize",()=>{if(document.getElementById("page-temp").classList.contains("active"))renderTempChart();});
 </script>
 </body>
