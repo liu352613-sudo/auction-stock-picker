@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-07-11 14:35:23",
+  "generated_at": "2026-07-11 14:41:20",
   "data_source": "内置样例数据(DEMO)",
-  "update_time": "14:35",
+  "update_time": "14:41",
   "params": {
-    "vol_ratio_min": 2.5,
+    "vol_ratio_min": 3.5,
     "auction_amount_min": 3000000,
     "new_stock_days": 60,
     "threshold_lo_base": 2.0,
-    "threshold_hi_base": 6.0,
+    "threshold_hi_base": 8.0,
     "threshold_lo_offset": 1.5,
     "threshold_hi_offset": 6.0,
     "take_profit": 0.05,

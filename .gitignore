@@ -6,3 +6,7 @@ venv/
 .workbuddy/
 # 选股结果 JSON 需提交给 EdgeOne 静态站使用（仅忽略可能的本地临时数据目录）
 data/tmp/
+# 回测/调参过程缓存（非交付物）
+auction_reports/.bt_cache/
+auction_reports/.tune_tmp/
+.DS_Store

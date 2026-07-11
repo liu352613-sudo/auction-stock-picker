@@ -1,0 +1,13 @@
+{
+  "meta": {
+    "scope": "all",
+    "start": "2024-01-01",
+    "end": "2024-12-31",
+    "limit": 10,
+    "exit_rule": "T+1 次日开盘卖出",
+    "data_source": "AkShare",
+    "generated_at": "2026-07-11 13:44:17"
+  },
+  "stats": {},
+  "trades": []
+}

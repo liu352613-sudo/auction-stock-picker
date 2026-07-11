@@ -1,33 +1,33 @@
 # 竞价选股策略 自动调参报告
 
-> 区间 **2026-01-01 ~ 2026-07-10** ｜ 抽样 **120** 只 ｜ demo=True ｜ 组合 12
+> 区间 **2026-01-01 ~ 2026-07-10** ｜ 抽样 **120** 只 ｜ demo=False ｜ 组合 12
 
 ## 目标函数排名 (综合: 累计收益×胜率×样本量 − 风险惩罚)
 
 | 排名 | 参数组合 | 胜率% | 累计(复利)% | 交易次数 | 目标函数 |
 |------|------|------|------|------|------|
-| 1 | vol_ratio_min=2.5 auction_amount_min=3000000 threshold_hi_base=6.0 w_vol_ratio=30.0 | 2.27 | -80.22 | 44 | -0.0334 |
-| 2 | vol_ratio_min=2.5 auction_amount_min=3000000 threshold_hi_base=8.0 w_vol_ratio=30.0 | 2.27 | -80.22 | 44 | -0.0334 |
-| 3 | vol_ratio_min=2.5 auction_amount_min=5000000 threshold_hi_base=6.0 w_vol_ratio=30.0 | 2.27 | -80.22 | 44 | -0.0334 |
-| 4 | vol_ratio_min=2.5 auction_amount_min=5000000 threshold_hi_base=8.0 w_vol_ratio=30.0 | 2.27 | -80.22 | 44 | -0.0334 |
-| 5 | vol_ratio_min=3.0 auction_amount_min=3000000 threshold_hi_base=6.0 w_vol_ratio=30.0 | 2.27 | -80.22 | 44 | -0.0334 |
-| 6 | vol_ratio_min=3.0 auction_amount_min=3000000 threshold_hi_base=8.0 w_vol_ratio=30.0 | 2.27 | -80.22 | 44 | -0.0334 |
-| 7 | vol_ratio_min=3.0 auction_amount_min=5000000 threshold_hi_base=6.0 w_vol_ratio=30.0 | 2.27 | -80.22 | 44 | -0.0334 |
-| 8 | vol_ratio_min=3.0 auction_amount_min=5000000 threshold_hi_base=8.0 w_vol_ratio=30.0 | 2.27 | -80.22 | 44 | -0.0334 |
-| 9 | vol_ratio_min=3.5 auction_amount_min=3000000 threshold_hi_base=6.0 w_vol_ratio=30.0 | 2.44 | -77.81 | 41 | -0.034 |
-| 10 | vol_ratio_min=3.5 auction_amount_min=3000000 threshold_hi_base=8.0 w_vol_ratio=30.0 | 2.44 | -77.81 | 41 | -0.034 |
-| 11 | vol_ratio_min=3.5 auction_amount_min=5000000 threshold_hi_base=6.0 w_vol_ratio=30.0 | 2.44 | -77.81 | 41 | -0.034 |
-| 12 | vol_ratio_min=3.5 auction_amount_min=5000000 threshold_hi_base=8.0 w_vol_ratio=30.0 | 2.44 | -77.81 | 41 | -0.034 |
+| 1 | vol_ratio_min=3.5 auction_amount_min=3000000 threshold_hi_base=8.0 w_vol_ratio=30.0 | 60.0 | -1.28 | 5 | -0.0133 |
+| 2 | vol_ratio_min=3.5 auction_amount_min=5000000 threshold_hi_base=8.0 w_vol_ratio=30.0 | 60.0 | -1.28 | 5 | -0.0133 |
+| 3 | vol_ratio_min=2.5 auction_amount_min=3000000 threshold_hi_base=6.0 w_vol_ratio=30.0 | 40.0 | -22.94 | 10 | -0.1163 |
+| 4 | vol_ratio_min=3.0 auction_amount_min=3000000 threshold_hi_base=6.0 w_vol_ratio=30.0 | 55.56 | -19.53 | 9 | -0.1336 |
+| 5 | vol_ratio_min=3.0 auction_amount_min=5000000 threshold_hi_base=6.0 w_vol_ratio=30.0 | 55.56 | -19.53 | 9 | -0.1336 |
+| 6 | vol_ratio_min=2.5 auction_amount_min=3000000 threshold_hi_base=8.0 w_vol_ratio=30.0 | 33.33 | -33.13 | 12 | -0.139 |
+| 7 | vol_ratio_min=3.0 auction_amount_min=3000000 threshold_hi_base=8.0 w_vol_ratio=30.0 | 50.0 | -23.73 | 10 | -0.1458 |
+| 8 | vol_ratio_min=3.0 auction_amount_min=5000000 threshold_hi_base=8.0 w_vol_ratio=30.0 | 50.0 | -23.73 | 10 | -0.1458 |
+| 9 | vol_ratio_min=2.5 auction_amount_min=5000000 threshold_hi_base=6.0 w_vol_ratio=30.0 | 41.67 | -28.39 | 12 | -0.1478 |
+| 10 | vol_ratio_min=2.5 auction_amount_min=5000000 threshold_hi_base=8.0 w_vol_ratio=30.0 | 38.46 | -32.13 | 13 | -0.155 |
+| 11 | vol_ratio_min=3.5 auction_amount_min=3000000 threshold_hi_base=6.0 w_vol_ratio=30.0 | 75.0 | 4.16 | 4 | -995.0 |
+| 12 | vol_ratio_min=3.5 auction_amount_min=5000000 threshold_hi_base=6.0 w_vol_ratio=30.0 | 75.0 | 4.16 | 4 | -995.0 |
 
 ## 最优参数
 
 ```json
 {
-  "vol_ratio_min": 2.5,
+  "vol_ratio_min": 3.5,
   "auction_amount_min": 3000000,
   "new_stock_days": 60,
   "threshold_lo_base": 2.0,
-  "threshold_hi_base": 6.0,
+  "threshold_hi_base": 8.0,
   "threshold_lo_offset": 1.5,
   "threshold_hi_offset": 6.0,
   "take_profit": 0.05,

@@ -1,0 +1,183 @@
+{
+  "generated_at": "2026-07-11 14:42:24",
+  "backtest": {
+    "primary": {
+      "file": "backtest_all_2026-01-01_2026-07-10_top200.json",
+      "period": "2026-01-01 ~ 2026-07-10",
+      "scope": "all",
+      "exit_rule": "T+1 次日开盘卖出",
+      "data_source": "AkShare",
+      "stats": {
+        "交易次数": 21.0,
+        "盈利次数": 11.0,
+        "胜率%": 52.38,
+        "平均收益率%": 0.97,
+        "平均盈利%": 3.972,
+        "平均亏损%": -2.332,
+        "累计收益%(等权)": 20.37,
+        "累计收益%(复利)": 20.63,
+        "最大单笔收益%": 11.92,
+        "最大单笔亏损%": -3.9,
+        "触达+5%次数": 10.0,
+        "触达-3%次数": 8.0
+      },
+      "monthly": [
+        {
+          "month": "2026-04",
+          "trades": 8,
+          "win_rate": 37.5,
+          "cum_return": 5.1
+        },
+        {
+          "month": "2026-05",
+          "trades": 5,
+          "win_rate": 60.0,
+          "cum_return": 2.15
+        },
+        {
+          "month": "2026-06",
+          "trades": 5,
+          "win_rate": 60.0,
+          "cum_return": 6.49
+        },
+        {
+          "month": "2026-07",
+          "trades": 3,
+          "win_rate": 66.7,
+          "cum_return": 6.63
+        }
+      ],
+      "is_primary": true
+    },
+    "reports": [
+      {
+        "file": "backtest_all_2025-12-23_2026-07-11.json",
+        "period": "2025-12-23 ~ 2026-07-11",
+        "scope": "all",
+        "trades": 43,
+        "win_rate": 9.3,
+        "avg_return": -3.31,
+        "cum_return": -76.71,
+        "max_drawdown_trade": -6.91,
+        "touch_tp": 0,
+        "touch_sl": 37
+      },
+      {
+        "file": "backtest_all_2026-01-01_2026-07-10_top200.json",
+        "period": "2026-01-01 ~ 2026-07-10",
+        "scope": "all",
+        "trades": 21,
+        "win_rate": 52.38,
+        "avg_return": 0.97,
+        "cum_return": 20.63,
+        "max_drawdown_trade": -3.9,
+        "touch_tp": 10,
+        "touch_sl": 8
+      }
+    ]
+  },
+  "recommendation": {
+    "total_days": 1,
+    "total_picks": 6,
+    "avg_score": 94.5,
+    "avg_temperature": 78.0,
+    "score_distribution": {
+      "0-10": 0,
+      "10-20": 0,
+      "20-30": 0,
+      "30-40": 0,
+      "40-50": 0,
+      "50-60": 0,
+      "60-70": 0,
+      "70-80": 1,
+      "80-90": 0,
+      "90-100": 5
+    },
+    "temperature_distribution": {
+      "冰冷": 0,
+      "寒冷": 0,
+      "凉爽": 0,
+      "温暖": 1,
+      "炎热": 0,
+      "沸腾": 0
+    },
+    "top_picks": [
+      {
+        "code": "000001",
+        "name": "平安银行",
+        "count": 1,
+        "avg_score": 100.0
+      },
+      {
+        "code": "300750",
+        "name": "宁德时代",
+        "count": 1,
+        "avg_score": 100.0
+      },
+      {
+        "code": "002594",
+        "name": "比亚迪",
+        "count": 1,
+        "avg_score": 100.0
+      },
+      {
+        "code": "000858",
+        "name": "五粮液",
+        "count": 1,
+        "avg_score": 99.0
+      },
+      {
+        "code": "600519",
+        "name": "贵州茅台",
+        "count": 1,
+        "avg_score": 93.0
+      },
+      {
+        "code": "601318",
+        "name": "中国平安",
+        "count": 1,
+        "avg_score": 74.9
+      }
+    ],
+    "trend": [
+      {
+        "date": "2026-07-11",
+        "avg_score": 94.5,
+        "temperature": 78.0
+      }
+    ]
+  },
+  "tuning": {
+    "meta": {
+      "start": "2026-01-01",
+      "end": "2026-07-10",
+      "limit": 120,
+      "demo": false,
+      "grid_keys": [
+        "vol_ratio_min",
+        "auction_amount_min",
+        "threshold_hi_base",
+        "w_vol_ratio"
+      ],
+      "n_combos": 12,
+      "tuned_at": "2026-07-11 14:39:24"
+    },
+    "best_key": 10,
+    "best_params": null,
+    "best_stats": {
+      "交易次数": 4,
+      "盈利次数": 3,
+      "胜率%": 75.0,
+      "平均收益率%": 1.097,
+      "平均盈利%": 3.147,
+      "平均亏损%": -5.05,
+      "累计收益%(等权)": 4.39,
+      "累计收益%(复利)": 4.16,
+      "最大单笔收益%": 5.5,
+      "最大单笔亏损%": -5.05,
+      "触达+5%次数": 2,
+      "触达-3%次数": 2
+    },
+    "n_combos": 12
+  }
+}
