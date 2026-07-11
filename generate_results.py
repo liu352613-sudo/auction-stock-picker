@@ -16,6 +16,7 @@
 import os
 import sys
 import json
+import datetime
 import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -37,32 +38,46 @@ def to_native(v):
     return v
 
 
+# 买入程度 → npcs1983 风格「建议」文案
+RECO_MAP = {
+    "强烈推荐": "积极关注",
+    "中等": "小仓试错",
+    "谨慎": "极小仓观察",
+    "不推荐": "暂不参与",
+}
+
+
 def build_payload(result):
     stocks = result["stocks"]
-    cols = ["代码", "名称", "动能评分", "买入价", "止盈价", "止损价", "量比", "开盘涨幅%", "买入程度"]
-    avail = [c for c in cols if c in stocks.columns]
 
-    def row_to_dict(r):
-        d = {}
-        for c in avail:
-            d[c] = to_native(r[c])
-        return d
-
-    all_rows = [row_to_dict(r) for _, r in stocks.iterrows()]
-
-    top3 = []
-    for _, r in stocks.head(3).iterrows():
-        open_price = float(r.get("买入价", 0) or 0)
-        top3.append({
-            "代码": to_native(r.get("代码")),
-            "名称": to_native(r.get("名称")),
-            "开盘价": round(open_price, 2),
-            "止盈价": round(open_price * 1.05, 2),
-            "止损价": round(open_price * 0.97, 2),
-            "动能评分": to_native(r.get("动能评分")),
-            "量比": to_native(r.get("量比")),
-            "买入程度": to_native(r.get("买入程度", "-")),
+    # npcs1983 风格主表字段：排名/名称代码/板块/现价/涨跌幅/评分/建议/交易额
+    stocks_list = []
+    for i, (_, r) in enumerate(stocks.iterrows()):
+        buy_degree = to_native(r.get("买入程度", "-"))
+        price = to_native(r.get("最新价", r.get("买入价", 0)) or 0)
+        pct = to_native(r.get("开盘涨幅%", 0) or 0)
+        turnover = to_native(r.get("成交额", 0) or 0)
+        stocks_list.append({
+            "排名": i + 1,
+            "代码": str(to_native(r.get("代码", ""))),
+            "名称": to_native(r.get("名称", "")),
+            "板块": to_native(r.get("行业", "未知")),
+            "现价": round(float(price), 2),
+            "涨跌幅": round(float(pct), 2),
+            "评分": round(float(to_native(r.get("动能评分", 0)) or 0), 1),
+            "建议": RECO_MAP.get(buy_degree, "极小仓观察"),
+            "买入程度": buy_degree,
+            "交易额": float(turnover),
+            "买入价": round(float(to_native(r.get("买入价", 0)) or 0), 2),
+            "止盈价": round(float(to_native(r.get("止盈价", 0)) or 0), 2),
+            "止损价": round(float(to_native(r.get("止损价", 0)) or 0), 2),
+            "量比": round(float(to_native(r.get("量比", 0)) or 0), 2),
         })
+    stocks_list.sort(key=lambda x: x["评分"], reverse=True)
+    for i, s in enumerate(stocks_list):
+        s["排名"] = i + 1
+
+    top3 = stocks_list[:3]
 
     temp = result["temperature"]
     temperature = {
@@ -75,10 +90,12 @@ def build_payload(result):
     return {
         "generated_at": result["generated_at"],
         "data_source": result["data_source"],
+        "update_time": datetime.datetime.now().strftime("%H:%M"),
         "temperature": temperature,
+        "stocks": stocks_list,
         "top3": top3,
-        "all": all_rows,
-        "count": len(all_rows),
+        "all": stocks_list,
+        "count": len(stocks_list),
     }
 
 

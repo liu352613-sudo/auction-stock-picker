@@ -542,6 +542,8 @@ def _enrich_and_score(filtered, market_pct):
             "买入价": buy, "止盈价": tp, "止损价": sl,
             "行业": industry, "量比": round(vol_ratio, 2),
             "开盘涨幅%": round(pct, 2),
+            "成交额": _safe_num(row.get("成交额", 0)),
+            "最新价": round(price, 2),
             "明细": detail,
         })
     return pd.DataFrame(records)
@@ -657,6 +659,8 @@ def run_demo(output_dir):
             "代码": code, "名称": row["名称"], "动能评分": score,
             "买入价": round(price, 2), "止盈价": round(price * (1 + TAKE_PROFIT), 2),
             "止损价": round(price * (1 - STOP_LOSS), 2), "行业": row["行业"],
+            "成交额": _safe_num(row.get("成交额", 0)),
+            "最新价": round(price, 2),
         })
     res_df = pd.DataFrame(recs)
     res_df, multi = add_sector_bonus(res_df)
