@@ -1047,7 +1047,8 @@ def _bt_demo_market_pct():
 def _bt_demo_hist(code):
     rng = np.random.default_rng(abs(hash(code)) % (2 ** 32))
     n = 200
-    dates = pd.date_range("2026-01-01", periods=n, freq="B")
+    # 锚定到「今日」结束，避免演示 K 线出现未来日期
+    dates = pd.bdate_range(end=pd.Timestamp.today().normalize(), periods=n)
     base = rng.uniform(10, 100)
     rets = rng.normal(0.0005, 0.02, n)
     close = base * np.cumprod(1 + rets)
