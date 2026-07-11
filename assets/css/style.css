@@ -1,0 +1,248 @@
+:root {
+  /* 深蓝金融主题 */
+  --bg: #0b1220;
+  --bg-soft: #111c30;
+  --panel: #15233c;
+  --panel-2: #1b2d4d;
+  --border: #243a5e;
+  --text: #e8eef7;
+  --text-dim: #9fb2cc;
+  --text-mute: #6c82a3;
+  --accent: #2f81f7;
+  --accent-soft: #1d4ed8;
+  --up: #f6465d;     /* 涨 = 红 */
+  --down: #2ebd85;   /* 跌 = 绿 */
+  --warn: #f0b90b;
+  --radius: 12px;
+  --shadow: 0 6px 24px rgba(0,0,0,.35);
+  --maxw: 1180px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: radial-gradient(1200px 600px at 70% -10%, #16243f 0%, var(--bg) 55%) fixed;
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---------- 顶栏 ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; gap: 18px;
+  padding: 12px 22px;
+  background: rgba(11,18,32,.82);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: grid; place-items: center;
+  font-size: 20px; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, #2f81f7, #1d4ed8);
+  box-shadow: 0 4px 14px rgba(47,129,247,.45);
+}
+.brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+.brand-name { font-weight: 700; font-size: 17px; letter-spacing: .5px; }
+.brand-sub { font-size: 11px; color: var(--text-mute); }
+.nav { display: flex; gap: 4px; margin-left: 14px; flex-wrap: wrap; }
+.nav-item {
+  padding: 8px 14px; border-radius: 9px; color: var(--text-dim);
+  font-weight: 600; font-size: 14px;
+}
+.nav-item:hover { background: var(--panel); color: var(--text); text-decoration: none; }
+.nav-item.active { background: var(--panel-2); color: #fff; box-shadow: inset 0 0 0 1px var(--border); }
+.topbar-right { margin-left: auto; }
+.ds-badge {
+  font-size: 12px; padding: 5px 11px; border-radius: 20px;
+  background: var(--panel); border: 1px solid var(--border); color: var(--text-dim);
+}
+.ds-badge.live { color: var(--down); border-color: rgba(46,189,133,.4); }
+.ds-badge.demo { color: var(--warn); border-color: rgba(240,185,11,.4); }
+
+/* ---------- 布局 ---------- */
+.app { flex: 1; width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 22px 18px 40px; }
+.loading, .empty, .error {
+  text-align: center; color: var(--text-mute); padding: 60px 0; font-size: 15px;
+}
+.error { color: var(--up); }
+.section { margin-bottom: 26px; }
+.section-title {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 16px; font-weight: 700; margin: 0 0 14px;
+}
+.section-title::before {
+  content: ""; width: 4px; height: 16px; border-radius: 3px;
+  background: linear-gradient(180deg, #2f81f7, #1d4ed8);
+}
+.muted { color: var(--text-mute); }
+.small { font-size: 12px; }
+
+/* ---------- 卡片 ---------- */
+.grid { display: grid; gap: 16px; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-5 { grid-template-columns: repeat(5, 1fr); }
+.card {
+  background: linear-gradient(180deg, var(--panel), var(--bg-soft));
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; box-shadow: var(--shadow);
+}
+.card h3 { margin: 0 0 10px; font-size: 14px; color: var(--text-dim); font-weight: 600; }
+
+/* ---------- 温度英雄卡 ---------- */
+.hero {
+  display: grid; grid-template-columns: 200px 1fr; gap: 22px; align-items: center;
+  background: linear-gradient(120deg, #16243f, #0f1b30);
+}
+.gauge { position: relative; width: 200px; height: 200px; }
+.gauge canvas { width: 200px; height: 200px; }
+.gauge-center {
+  position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+}
+.gauge-val { font-size: 46px; font-weight: 800; line-height: 1; }
+.gauge-lvl { margin-top: 4px; font-size: 14px; font-weight: 700; }
+.hero-meta { display: flex; flex-direction: column; gap: 8px; }
+.hero-meta .row { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;
+  background: var(--panel-2); color: var(--text-dim); border: 1px solid var(--border);
+}
+.badge.lv-warm { color: var(--warn); border-color: rgba(240,185,11,.4); }
+.badge.lv-hot { color: var(--up); border-color: rgba(246,70,93,.4); }
+.badge.lv-cool { color: var(--accent); border-color: rgba(47,129,247,.4); }
+
+/* ---------- 指数栏 ---------- */
+.index-card { text-align: center; padding: 12px 8px; }
+.index-card .nm { font-size: 12px; color: var(--text-mute); }
+.index-card .vl { font-size: 18px; font-weight: 700; margin: 4px 0 2px; }
+.index-card .pc { font-size: 13px; font-weight: 600; }
+
+/* ---------- 精选卡 ---------- */
+.pick-card { display: flex; flex-direction: column; gap: 8px; cursor: pointer; transition: transform .12s, border-color .12s; }
+.pick-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+.pick-card .top { display: flex; justify-content: space-between; align-items: center; }
+.pick-card .nm { font-size: 17px; font-weight: 700; }
+.pick-card .cd { font-size: 12px; color: var(--text-mute); }
+.score-ring { font-size: 28px; font-weight: 800; }
+.pick-card .price { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-dim); }
+.pick-card .levels { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---------- 表格 ---------- */
+.table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 720px; }
+thead th {
+  background: var(--panel-2); color: var(--text-dim); font-weight: 600;
+  text-align: right; padding: 11px 12px; white-space: nowrap; position: sticky; top: 0;
+}
+thead th:first-child, thead th.l { text-align: left; }
+tbody td { padding: 10px 12px; text-align: right; border-top: 1px solid var(--border); white-space: nowrap; }
+tbody td.l { text-align: left; }
+tbody tr:hover { background: rgba(47,129,247,.06); }
+.rank { font-weight: 700; color: var(--text-mute); }
+.stk { font-weight: 700; }
+.stk small { display: block; font-weight: 400; color: var(--text-mute); font-size: 12px; }
+.sector-tag { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--panel-2); color: var(--text-dim); }
+
+.up { color: var(--up); }
+.down { color: var(--down); }
+.flat { color: var(--text-dim); }
+
+.reco { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 6px; }
+.reco.strong { background: rgba(246,70,93,.15); color: var(--up); }
+.reco.mid { background: rgba(240,185,11,.15); color: var(--warn); }
+.reco.cautious { background: rgba(47,129,247,.15); color: var(--accent); }
+.reco.none { background: var(--panel-2); color: var(--text-mute); }
+
+.degree { font-weight: 600; }
+.btn-detail {
+  font-size: 12px; padding: 4px 10px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--panel-2); color: var(--text); cursor: pointer;
+}
+.btn-detail:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- 详情页 ---------- */
+.detail-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.detail-head .nm { font-size: 24px; font-weight: 800; }
+.detail-head .cd { color: var(--text-mute); }
+.detail-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
+.stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.stat .k { font-size: 12px; color: var(--text-mute); }
+.stat .v { font-size: 18px; font-weight: 700; margin-top: 3px; }
+.kline-box { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+.kline-box canvas { width: 100%; height: 360px; display: block; }
+.range-tabs { display: flex; gap: 6px; margin: 10px 0; }
+.range-tabs button {
+  font-size: 12px; padding: 5px 12px; border-radius: 7px; cursor: pointer;
+  background: var(--panel-2); color: var(--text-dim); border: 1px solid var(--border);
+}
+.range-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ---------- 表单/配置 ---------- */
+.form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 13px; color: var(--text-dim); }
+.field input[type=number], .field select {
+  background: var(--bg-soft); border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; padding: 8px 10px; font-size: 14px;
+}
+.field .hint { font-size: 11px; color: var(--text-mute); }
+.field.switch { flex-direction: row; align-items: center; justify-content: space-between; }
+.switch input { width: 18px; height: 18px; }
+.form-actions { display: flex; gap: 10px; margin-top: 8px; }
+.btn {
+  padding: 9px 18px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--panel-2); color: var(--text); font-weight: 600; cursor: pointer; font-size: 14px;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: linear-gradient(135deg, #2f81f7, #1d4ed8); border-color: transparent; color: #fff; }
+.btn.primary:hover { filter: brightness(1.08); }
+.note { font-size: 12px; color: var(--text-mute); margin-top: 8px; }
+
+/* ---------- 列表/历史 ---------- */
+.list { display: flex; flex-direction: column; gap: 10px; }
+.list-item {
+  display: flex; align-items: center; gap: 14px; padding: 13px 16px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px; cursor: pointer;
+}
+.list-item:hover { border-color: var(--accent); }
+.list-item .date { font-weight: 700; width: 110px; }
+.list-item .pill { width: 64px; text-align: center; }
+.list-item .meta { color: var(--text-dim); font-size: 13px; flex: 1; }
+.list-item .arrow { color: var(--text-mute); }
+
+/* ---------- 图表 ---------- */
+.chart-box { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.chart-box canvas { width: 100%; display: block; }
+.chart-title { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+
+/* ---------- 收益统计关键指标 ---------- */
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.kpi { background: linear-gradient(180deg, var(--panel), var(--bg-soft)); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+.kpi .v { font-size: 26px; font-weight: 800; }
+.kpi .k { font-size: 12px; color: var(--text-mute); margin-top: 4px; }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 920px) {
+  .grid-5 { grid-template-columns: repeat(3, 1fr); }
+  .grid-3 { grid-template-columns: 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .hero { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .detail-stats, .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .form-grid { grid-template-columns: 1fr; }
+  .nav-item { padding: 8px 10px; font-size: 13px; }
+}
+@media (max-width: 560px) {
+  .grid-5 { grid-template-columns: repeat(2, 1fr); }
+  .topbar { flex-wrap: wrap; gap: 10px; }
+  .nav { margin-left: 0; width: 100%; }
+}

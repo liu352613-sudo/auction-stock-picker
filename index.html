@@ -1,155 +1,44 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>每日竞价选股推荐</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif;
-  background:linear-gradient(135deg,#1a2a6c,#b21f1f,#fdbb2d);
-  background:#1a237e;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;padding:30px 20px;font-size:15px;
-}
-.container{max-width:720px;width:100%;text-align:center}
-h1{
-  font-size:32px;margin-bottom:8px;text-shadow:0 2px 8px rgba(0,0,0,.3);
-  display:flex;align-items:center;justify-content:center;gap:12px;
-}
-h1 .icon{font-size:36px}
-.subtitle{
-  font-size:14.5px;color:rgba(255,255,255,.78);margin-bottom:28px;line-height:1.5;
-}
-.card{
-  background:#fff;border-radius:16px;padding:28px 24px 22px;box-shadow:
-  0 8px 32px rgba(0,0,0,.25);text-align:left;color:#1a1a2e;
-}
-.run-btn{
-  display:block;width:100%;padding:14px;border-radius:12px;font-size:18px;font-weight:700;
-  cursor:pointer;background:linear-gradient(135deg,#ff416c,#ff4b2b);color:#fff;
-  border:none;transition:.25s;letter-spacing:1px;margin-bottom:18px;
-}
-.run-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(255,65,108,.45)}
-.run-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
-.hint{
-  background:#e3f2fd;color:#1565c0;padding:11px 16px;border-radius:10px;
-  font-size:13.5px;line-height:1.6;margin-bottom:10px;
-}
-.warn{background:#fff3e0;color:#e65100}
-
-/* ===== 结果区域 ===== */
-.result-area{margin-top:18px}
-.npcs-table{width:100%;border-collapse:collapse;font-size:13px}
-.npcs-table thead th{
-  background:#fafafa;padding:10px 12px;text-align:left;font-weight:600;color:#888;
-  border-bottom:2px solid #eee;font-size:12px;white-space:nowrap;
-}
-.npcs-table tbody td{
-  padding:11px 12px;border-bottom:1px solid #f5f5f5;color:#333;white-space:nowrap;
-}
-.npcs-table tbody tr:hover{background:#fafcff}
-.rk{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
-  border-radius:50%;font-size:12px;font-weight:700;background:#f0f0f0;color:#999}
-.rk.top{background:#c0392b;color:#fff}
-.stk-name{font-weight:700;color:#1a1a2e}
-.stk-code{color:#aaa;font-size:11.5px;margin-left:5px;font-weight:400}
-.sector{display:inline-block;padding:2px 10px;border-radius:10px;background:#eef2f7;color:#5a6b7b;font-size:11.5px}
-.price{font-weight:700;font-size:14px}
-.chg{font-weight:700;font-size:13px}
-.score{font-weight:800;font-size:14px;color:#e67e22}
-.up{color:#e74c3c}.down{color:#27ae60}.flat{color:#888}
-
-.footer-risk{
-  background:#fffaf0;border-left:4px solid #e65100;color:#bf360c;
-  padding:12px 16px;border-radius:8px;margin-top:14px;font-size:12px;line-height:1.7;
-}
-.hidden{display:none!important}
-.status-msg{padding:20px;text-align:center;color:#999;font-size:15px}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>竞价选股 · A股集合竞价策略</title>
+  <meta name="description" content="基于集合竞价量价特征的 A 股量化选股系统：实时温度、精选个股、K线详情、策略调参与收益统计。" />
+  <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
-
-<div class="container">
-  <h1><span class="icon">📈</span> 每日竞价选股推荐</h1>
-  <p class="subtitle">基于 AkShare 集合竞价数据的 A 股竞价选股器 · 每日 09:26 口径</p>
-
-  <div class="card">
-    <button class="run-btn" id="runBtn">🔍 运行选股</button>
-    <div id="status"></div>
-
-    <div id="resultArea" class="result-area hidden">
-      <table class="npcs-table" id="npcsTable">
-        <thead><tr>
-          <th>排名</th><th>名称(代码)</th><th>板块</th><th>现价</th>
-          <th>涨跌幅</th><th>评分</th>
-        </tr></thead>
-        <tbody id="npcsBody"></tbody>
-      </table>
-      <div class="footer-risk">
-        ⚠️ 风险提示：以上推荐仅基于集合竞价数据量化筛选，不构成任何投资建议。
-        市场有风险，投资需谨慎。数据仅供参考，请结合市场环境审慎决策。
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">竞</span>
+      <div class="brand-text">
+        <span class="brand-name">竞价选股</span>
+        <span class="brand-sub">A股集合竞价量化策略</span>
       </div>
     </div>
-  </div>
-</div>
+    <nav class="nav" id="nav">
+      <a class="nav-item" data-route="pick" href="#/">精选</a>
+      <a class="nav-item" data-route="history" href="#/history">历史推荐</a>
+      <a class="nav-item" data-route="stats" href="#/stats">收益统计</a>
+      <a class="nav-item" data-route="config" href="#/config">参数配置</a>
+      <a class="nav-item" data-route="optimize" href="#/optimize">策略优化</a>
+    </nav>
+    <div class="topbar-right">
+      <span class="ds-badge" id="ds-badge">数据加载中…</span>
+    </div>
+  </header>
 
-<script>
-const DATA_URL="./data/results.json";
-let appData=null;
+  <main id="app" class="app">
+    <div class="loading">加载中…</div>
+  </main>
 
-// helpers
-function colorClass(v){return v>0?"up":v<0?"down":"flat";}
-function fmtChg(v){return(v>0?"+":"")+Number(v).toFixed(2)+"%";}
+  <footer class="footer">
+    <span>竞价选股 · 数据来源于公开行情，仅供研究学习，不构成投资建议。</span>
+    <span id="foot-time"></span>
+  </footer>
 
-// 主表渲染
-function renderNpcsTable(data){
-  const stocks=data.stocks||[];
-  document.getElementById("npcsBody").innerHTML=stocks.length?
-    stocks.map(s=>{
-      const cc=colorClass(s.涨跌幅);
-      return`<tr>
-        <td><span class="rk${s.排名<=3?' top':''}">${s.排名}</span></td>
-        <td><span class="stk-name">${s.名称}</span><span class="stk-code">${s.代码}</span></td>
-        <td><span class="sector">${s.板块}</span></td>
-        <td class="price ${cc}">${Number(s.现价).toFixed(2)}</td>
-        <td class="chg ${cc}">${fmtChg(s.涨跌幅)}</td>
-        <td class="score">${s.评分}</td>
-      </tr>`;}).
-    join(""):'<tr><td colspan="6" class="status-msg">暂无符合条件的个股</td></tr>';
-}
-
-// 状态消息
-function showStatus(m,t){
-  const el=document.getElementById("status");
-  el.innerHTML=t?`<div class="hint ${t==='warn'?'warn':''}">${m}</div>`:'';
-}
-
-// 加载数据
-async function loadData(){
-  const btn=document.getElementById("runBtn");
-  btn.disabled=true;
-  showStatus("⏳ 正在加载最新选股结果…","");
-  try{
-    const r=await fetch(DATA_URL+"?t="+Date.now());
-    if(!r.ok)throw new Error("HTTP "+r.status);
-    const d=await r.json();appData=d;
-
-    // 渲染
-    renderNpcsTable(d);
-
-    // 显示结果区
-    document.getElementById("resultArea").classList.remove("hidden");
-    showStatus(`✅ 已加载 ${d.count||0} 只候选股票（生成于 ${d.generated_at||'-'}）`,"");
-  }catch(e){
-    showStatus("⚠️ 无法获取数据（"+e.message+"）","warn");
-  }finally{
-    btn.disabled=false;
-  }
-}
-
-// init
-document.getElementById("runBtn").addEventListener("click",loadData);
-</script>
+  <script src="assets/js/util.js"></script>
+  <script src="assets/js/charts.js"></script>
+  <script src="assets/js/app.js"></script>
 </body>
 </html>

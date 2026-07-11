@@ -227,7 +227,7 @@ def aggregate_tuning():
     return {
         "meta": d.get("meta", {}),
         "best_key": best_key,
-        "best_params": (best or {}).get("params"),
+        "best_params": (best or {}).get("combo"),
         "best_stats": (best or {}).get("stats"),
         "n_combos": len(results),
     }
