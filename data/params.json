@@ -75,5 +75,19 @@
   "end": "2026-07-10",
   "limit": 120,
   "demo": false,
-  "note": "best 为自动调参目标函数最优组合；default 为出厂默认。样本有限，注意过拟合，实盘请审慎。"
+  "note": "best 为自动调参目标函数最优组合；default 为出厂默认。样本有限，注意过拟合，实盘请审慎。",
+  "meta": {
+    "start": "2026-01-01",
+    "end": "2026-07-10",
+    "limit": 120,
+    "demo": false,
+    "grid_keys": [
+      "vol_ratio_min",
+      "auction_amount_min",
+      "threshold_hi_base",
+      "w_vol_ratio"
+    ],
+    "n_combos": 12,
+    "tuned_at": "2026-07-11 14:39:24"
+  }
 }

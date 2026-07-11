@@ -142,7 +142,7 @@ def main():
         print(f"  [{ci}/{len(combos)}] {combo} -> 胜率{stats.get('胜率%','-')}% "
               f"累计{stats.get('累计收益%(复利)','-')}% 目标={obj}")
         if obj > best_obj:
-            best_obj, best, best_key = obj, dict(combo), ci
+            best_obj, best, best_key = obj, dict(combo), ci - 1  # 0 基索引，与 results 列表对齐
 
     # 清理临时回测文件
     for f in glob.glob(str(tmp / "backtest_*")):
