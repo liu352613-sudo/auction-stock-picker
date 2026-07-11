@@ -261,6 +261,7 @@ tbody tr:hover { background: rgba(47,129,247,.06); }
   .grid-2 { grid-template-columns: 1fr; }
   .hero { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   .detail-stats, .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
   .form-grid { grid-template-columns: 1fr; }
   .nav-item { padding: 8px 10px; font-size: 13px; }
 }
@@ -297,3 +298,48 @@ tbody tr:hover { background: rgba(47,129,247,.06); }
 .ff-d { color: var(--text-mute); }
 .ff-v { font-weight: 700; text-align: right; }
 .ff-p { text-align: right; font-weight: 600; }
+
+/* ---------- 数据日期 / 时效提示 ---------- */
+.data-freshness {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 14px; margin-bottom: 20px; font-size: 13px; color: var(--text-dim);
+}
+.df-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-mute); flex: none; }
+.df-dot.live { background: var(--down); box-shadow: 0 0 0 3px rgba(46,189,133,.18); }
+.df-dot.prev { background: var(--warn); box-shadow: 0 0 0 3px rgba(240,185,11,.18); }
+.df-text { font-weight: 600; color: var(--text); }
+.df-sub { color: var(--text-mute); font-size: 12px; }
+
+/* ---------- 评分拆解（8 维度可视化） ---------- */
+.score-breakdown-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.score-breakdown { display: flex; flex-direction: column; gap: 12px; }
+.sb-row {
+  display: grid; grid-template-columns: 96px 1fr 88px; align-items: center;
+  grid-template-areas: "label track score" "note note note"; gap: 4px 10px;
+}
+.sb-label { grid-area: label; font-size: 13px; color: var(--text-dim); font-weight: 600; }
+.sb-track { grid-area: track; height: 9px; border-radius: 6px; background: var(--bg-soft); overflow: hidden; border: 1px solid var(--border); }
+.sb-fill { height: 100%; border-radius: 6px; transition: width .4s ease; }
+.sb-fill.hi { background: linear-gradient(90deg, #2f81f7, #1d4ed8); }
+.sb-fill.mid { background: linear-gradient(90deg, #3aa0ff, #2f81f7); }
+.sb-fill.lo { background: linear-gradient(90deg, #5b6b85, #41506b); }
+.sb-score { grid-area: score; text-align: right; font-size: 13px; font-weight: 700; color: var(--text); }
+.sb-note { grid-area: note; font-size: 12px; color: var(--text-mute); }
+.sb-risk {
+  display: flex; gap: 8px; align-items: center; margin-top: 4px; padding: 8px 12px;
+  border-radius: 8px; background: var(--bg-soft); border: 1px solid var(--border); font-size: 12px;
+}
+.sb-risk-k { font-weight: 700; color: var(--text-dim); }
+.sb-risk-v { color: var(--text-mute); }
+.sb-risk.down .sb-risk-v { color: var(--down); }
+.sb-risk.down { border-color: rgba(46,189,133,.4); }
+
+/* ---------- 卡片/表格中的实时评分与 delta ---------- */
+.score-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.live-delta { font-size: 12px; font-weight: 700; min-height: 14px; }
+.live-delta.up { color: var(--up); }
+.live-delta.down { color: var(--down); }
+
+/* ---------- 4 列网格（历史详情统计） ---------- */
+.grid-4 { grid-template-columns: repeat(4, 1fr); }

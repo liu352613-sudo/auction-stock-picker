@@ -206,6 +206,12 @@
           }
         });
       });
+      // 时效提示 + 盘中实时评分重算（与盘前/回测同源）
+      updateFreshness(d);
+      var ls = d.live_scores || {};
+      Object.keys(ls).forEach(function (code) { applyLiveScore(code, ls[code]); });
+      if (d.live_score_flag) U.setLive("live", "● 实时行情 · 每20s");
+      else if (apiKnown) U.setLive("static", "○ 实时接口(静态回退)");
     }).catch(function () {});
     U.fetchAPI("/api/hot-sector").then(function (d) {
       var grid = document.getElementById("hot-sector-grid");
@@ -237,6 +243,16 @@
         }
         U.setLive("live", "● 实时行情 · 每20s");
       }
+      // 实时评分拆解：用同一引擎的盘中重算结果更新总分与维度条。
+      if (d.live_score) {
+        var scoreStat = document.querySelector('[data-k="动能评分"] .v');
+        if (scoreStat) scoreStat.textContent = Number(d.live_score.score).toFixed(1);
+        var bd = document.getElementById("score-breakdown");
+        if (bd && d.live_score.dimensions) {
+          bd.innerHTML = "";
+          bd.appendChild(scoreBreakdownNode(d.live_score.dimensions, d.live_score.risk_factor, d.live_score.risk_note));
+        }
+      }
       var box = document.getElementById("fund-flow-box");
       if (box && d.fund_flow && d.fund_flow.length) {
         box.innerHTML = "";
@@ -260,7 +276,10 @@
           U.el("div", { class: "nm", text: s["名称"] }),
           U.el("div", { class: "cd", text: s["代码"] + " · " + (s["板块"] || "-") }),
         ]),
-        U.el("div", { class: "score-ring " + (s["评分"] >= 80 ? "up" : (s["评分"] >= 60 ? "" : "down")), text: s["评分"].toFixed(1) }),
+        U.el("div", { class: "score-wrap" }, [
+          U.el("div", { class: "score-ring " + (s["评分"] >= 80 ? "up" : (s["评分"] >= 60 ? "" : "down")), "data-f": "score", text: s["评分"].toFixed(1) }),
+          U.el("div", { class: "live-delta", "data-f": "delta" }),
+        ]),
       ]),
       U.el("div", { class: "price" }, [
         U.el("span", { "data-f": "price", text: "现价 " + U.fmtNum(s["现价"], 2) }),
@@ -296,13 +315,75 @@
         U.el("td", { class: "l" }, [U.el("span", { class: "sector-tag", text: s["板块"] || "-" })]),
         U.el("td", { "data-f": "price", text: U.fmtNum(s["现价"], 2) }),
         U.el("td", { class: U.pctClass(pct), "data-f": "pct", text: U.fmtPct(pct) }),
-        U.el("td", { text: s["评分"].toFixed(1) }),
+        U.el("td", {}, [
+          U.el("span", { "data-f": "score", text: s["评分"].toFixed(1) }),
+          U.el("span", { class: "live-delta", "data-f": "delta" }),
+        ]),
         U.el("td", {}, [U.el("span", { class: "reco " + U.recoClass(s["买入程度"]), text: s["建议"] || s["买入程度"] })]),
         U.el("td", { class: "l degree", text: s["买入程度"] || "-" }),
         withDetail ? U.el("td", {}, [U.el("button", { class: "btn-detail", onclick: function () { go("/detail/" + s["代码"]); } }, "详情")]) : null,
       ]);
     });
     return U.el("div", { class: "table-wrap" }, U.el("table", {}, [head, U.el("tbody", {}, rows)]));
+  }
+
+  // ---------- 评分拆解可视化（8 维度）+ 实时评分应用 ----------
+  // 把统一评分引擎的 8 维度结果渲染成可解释的横向条形拆解（与 API/回测同源）。
+  function scoreBreakdownNode(dimensions, riskFactor, riskNote) {
+    dimensions = dimensions || [];
+    var rows = dimensions.map(function (d) {
+      var pct = d.max ? Math.max(0, Math.min(100, (Number(d.score) / Number(d.max)) * 100)) : 0;
+      var fillCls = pct >= 75 ? "hi" : (pct >= 40 ? "mid" : "lo");
+      return U.el("div", { class: "sb-row" }, [
+        U.el("div", { class: "sb-label", text: d.label }),
+        U.el("div", { class: "sb-track" }, [
+          U.el("div", { class: "sb-fill " + fillCls, style: "width:" + pct.toFixed(1) + "%" }),
+        ]),
+        U.el("div", { class: "sb-score", text: (d.score != null ? Number(d.score).toFixed(1) : "-") + " / " + (d.max != null ? d.max : "-") }),
+        U.el("div", { class: "sb-note", text: d.note || "" }),
+      ]);
+    });
+    var isPenalty = riskFactor != null && riskFactor < 1.0;
+    var riskTag = U.el("div", { class: isPenalty ? "sb-risk down" : "sb-risk" }, [
+      U.el("span", { class: "sb-risk-k", text: "风险调整" }),
+      U.el("span", { class: "sb-risk-v", text: isPenalty
+        ? ("因子 ×" + Number(riskFactor).toFixed(2) + " · " + (riskNote || "风险中性"))
+        : (riskNote || "风险中性") }),
+    ]);
+    return U.el("div", { class: "score-breakdown" }, rows.concat([riskTag]));
+  }
+
+  // 将 API 实时重算得到的 live_score 应用到列表/卡片中的评分与 delta 标记。
+  function applyLiveScore(code, v) {
+    var scoreEls = document.querySelectorAll('[data-code="' + code + '"] [data-f="score"]');
+    Array.prototype.forEach.call(scoreEls, function (el) {
+      el.textContent = Number(v.score).toFixed(1);
+      if (el.classList.contains("score-ring")) {
+        el.className = ("score-ring " + (v.score >= 80 ? "up" : (v.score >= 60 ? "" : "down"))).trim();
+      }
+    });
+    var deltaEls = document.querySelectorAll('[data-code="' + code + '"] [data-f="delta"]');
+    Array.prototype.forEach.call(deltaEls, function (el) {
+      if (Math.abs(v.delta) < 0.05) { el.textContent = ""; el.className = "live-delta"; return; }
+      var up = v.delta > 0;
+      el.textContent = (up ? "▲ +" : "▼ ") + Number(v.delta).toFixed(2);
+      el.className = "live-delta " + (up ? "up" : "down");
+    });
+  }
+
+  // 首页时效提示：数据日期 + 今日/最近交易日口径，二者同时展示。
+  function updateFreshness(d) {
+    var bar = document.getElementById("freshness-bar");
+    if (!bar) return;
+    var trade = d.trade_date || d.effective_date || "-";
+    var eff = d.effective_date || d.trade_date || "-";
+    var fresh = d.data_freshness;
+    var label = fresh === "today" ? "今日实时推荐" : (fresh === "previous" ? "最近交易日推荐（非交易时段 / 盘前）" : "推荐数据");
+    var dot = U.el("span", { class: "df-dot " + (fresh === "today" ? "live" : "prev") });
+    var txt = U.el("span", { class: "df-text", text: "数据日期：" + trade + " · " + label });
+    var sub = (eff && eff !== trade) ? U.el("span", { class: "df-sub", text: "（生效日 " + eff + "）" }) : null;
+    bar.innerHTML = "";
+    bar.appendChild(dot); bar.appendChild(txt); if (sub) bar.appendChild(sub);
   }
 
   // ---------- 视图：精选（选股主页） ----------
@@ -312,6 +393,11 @@
       setDS(res);
       var idxGrid = U.el("div", { class: "idx-grid", id: "idx-grid" });
       var wrap = U.el("div", {});
+      // 数据日期 / 时效提示
+      var freshBar = U.el("div", { class: "data-freshness", id: "freshness-bar" });
+      freshBar.appendChild(U.el("span", { class: "df-dot prev" }));
+      freshBar.appendChild(U.el("span", { class: "df-text", text: "数据日期：" + (res.trade_date || "-") }));
+      wrap.appendChild(freshBar);
       // 温度
       wrap.appendChild(U.el("div", { class: "section" }, [
         U.el("div", { class: "section-title", text: "大盘温度" }),
@@ -398,23 +484,15 @@
         ]);
       }));
 
-    // 评分明细
+    // 评分拆解（8 维度可视化，与 API 实时重算同源）
     var detailNode = null;
     if (stock && stock["评分明细"]) {
-      var d = stock["评分明细"];
-      var items = [
-        ["量比分", d["量比分"]], ["相对大盘分", d["相对大盘分"]],
-        ["均线偏离分", d["均线偏离分"]], ["量能比分", d["量能比分"]],
-        ["偏离度%", d["偏离度%"]], ["量能比%", d["量能比%"]],
-      ];
+      var d0 = stock["评分明细"];
+      var bdBox = U.el("div", { id: "score-breakdown", class: "score-breakdown-wrap" },
+        scoreBreakdownNode(d0.dimensions || [], d0.risk_factor, d0.risk_note));
       detailNode = U.el("div", { class: "section" }, [
-        U.el("div", { class: "section-title", text: "评分明细" }),
-        U.el("div", { class: "grid grid-3" }, items.map(function (it) {
-          return U.el("div", { class: "stat" }, [
-            U.el("div", { class: "k", text: it[0] }),
-            U.el("div", { class: "v", text: it[1] != null ? it[1] : "-" }),
-          ]);
-        })),
+        U.el("div", { class: "section-title", text: "评分拆解（统一引擎 · 8 维度）" }),
+        bdBox,
       ]);
     }
 
@@ -501,10 +579,11 @@
       var wrap = U.el("div", {});
       wrap.appendChild(U.el("div", { class: "section" }, [
         U.el("div", { class: "section-title", text: "历史推荐 · " + date }),
-        U.el("div", { class: "grid grid-3" }, [
+        U.el("div", { class: "grid grid-4" }, [
           U.el("div", { class: "stat" }, [U.el("div", { class: "k", text: "大盘温度" }), U.el("div", { class: "v", text: (temp.total != null ? temp.total : "-") + " (" + (temp.level || "-") + ")" })]),
           U.el("div", { class: "stat" }, [U.el("div", { class: "k", text: "推荐数" }), U.el("div", { class: "v", text: snap.count != null ? snap.count : (snap.stocks || []).length })]),
           U.el("div", { class: "stat" }, [U.el("div", { class: "k", text: "参数已调优" }), U.el("div", { class: "v", text: snap.params_tuned ? "是" : "否" })]),
+          U.el("div", { class: "stat" }, [U.el("div", { class: "k", text: "数据日期" }), U.el("div", { class: "v", text: snap.trade_date || date })]),
         ]),
       ]));
       wrap.appendChild(U.el("div", { class: "section" }, [
@@ -515,7 +594,7 @@
         U.el("div", { class: "section-title", text: "当日指数" }),
         indicesGrid(snap.indices, false),
       ]));
-      wrap.appendChild(U.el("div", { class: "note", text: "数据源：" + (snap.data_source || "-") + " · 快照时间：" + (snap.snapshot_at || "-") }));
+      wrap.appendChild(U.el("div", { class: "note", text: "数据源：" + (snap.data_source || "-") + " · 数据日期：" + (snap.trade_date || date) + " · 快照时间：" + (snap.snapshot_at || "-") }));
       app.appendChild(wrap);
     }).catch(function (e) {
       app.innerHTML = '<div class="error">加载 ' + U.escapeHtml(date) + ' 失败：' + U.escapeHtml(e.message) + '</div>';
