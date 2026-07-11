@@ -531,8 +531,10 @@ def _enrich_and_score(filtered, market_pct):
 
         score, detail = calc_momentum_score(price, vol_ratio, pct, ma60, market_pct,
                                             auction_vol, prev_vol)
-        industry = get_industry(code)
-        time.sleep(0.02)
+        industry = row.get("行业")
+        if not industry or str(industry).strip() in ("", "未知", "nan"):
+            industry = get_industry(code)
+            time.sleep(0.02)
 
         buy = round(price, 2)
         tp = round(price * (1 + TAKE_PROFIT), 2)
