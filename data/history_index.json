@@ -1,0 +1,13 @@
+[
+  {
+    "date": "2026-07-11",
+    "count": 6,
+    "temperature": 78.0,
+    "level": "温暖",
+    "avg_score": 94.5,
+    "top1": "平安银行",
+    "top1_code": "000001",
+    "data_source": "内置样例数据(DEMO)",
+    "params_tuned": true
+  }
+]

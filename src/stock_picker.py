@@ -737,6 +737,34 @@ def _demo_temp():
     }
 
 
+_DEMO_HIST_MAP = {
+    "000001": (11.5, 1_200_000), "600519": (1600.0, 400),
+    "300750": (165.0, 90_000), "601318": (46.0, 200_000),
+    "000858": (140.0, 60_000), "002594": (215.0, 55_000),
+}
+
+
+def _enrich_demo(filtered, market_pct, params=None):
+    """离线 enrich（demo 用，不触网）。返回基础 res_df（不含板块加分/买入程度）。"""
+    p = params or StrategyParams()
+    recs = []
+    for _, row in filtered.iterrows():
+        code = str(row["代码"])
+        price = _safe_num(row["最新价"]); vr = _safe_num(row["量比"])
+        pct = _safe_num(row["涨跌幅"]); av = _safe_num(row["成交量"])
+        ma60, pv = _DEMO_HIST_MAP.get(code, (price * 0.95, av * 2))
+        score, detail = calc_momentum_score(price, vr, pct, ma60, market_pct, av, pv, p)
+        recs.append({
+            "代码": code, "名称": row["名称"], "动能评分": score,
+            "买入价": round(price, 2), "止盈价": round(price * (1 + p.take_profit), 2),
+            "止损价": round(price * (1 - p.stop_loss), 2), "行业": row["行业"],
+            "市值": round(float(row.get("市值", 0)), 2), "涨停价": round(price * 1.1, 2),
+            "成交额": _safe_num(row.get("成交额", 0)),
+            "最新价": round(price, 2), "明细": detail,
+        })
+    return pd.DataFrame(recs)
+
+
 def run_demo(output_dir, params=None):
     """使用内置样例数据跑通全流程，便于离线验证。"""
     p = params or StrategyParams()
@@ -745,26 +773,7 @@ def run_demo(output_dir, params=None):
     market_pct = temp["market_pct"]
     low, high = calc_dynamic_threshold(market_pct, p)
     demo_df = _demo_pool()
-    hist_map = {
-        "000001": (11.5, 1_200_000), "600519": (1600.0, 400),
-        "300750": (165.0, 90_000), "601318": (46.0, 200_000),
-        "000858": (140.0, 60_000), "002594": (215.0, 55_000),
-    }
-    recs = []
-    for _, row in demo_df.iterrows():
-        code = str(row["代码"])
-        price = _safe_num(row["最新价"]); vr = _safe_num(row["量比"])
-        pct = _safe_num(row["涨跌幅"]); av = _safe_num(row["成交量"])
-        ma60, pv = hist_map.get(code, (price * 0.95, av * 2))
-        score, detail = calc_momentum_score(price, vr, pct, ma60, market_pct, av, pv, p)
-        recs.append({
-            "代码": code, "名称": row["名称"], "动能评分": score,
-            "买入价": round(price, 2), "止盈价": round(price * (1 + TAKE_PROFIT), 2),
-            "止损价": round(price * (1 - STOP_LOSS), 2), "行业": row["行业"],
-            "成交额": _safe_num(row.get("成交额", 0)),
-            "最新价": round(price, 2),
-        })
-    res_df = pd.DataFrame(recs)
+    res_df = _enrich_demo(demo_df, market_pct, p)
     res_df, multi = add_sector_bonus(res_df, p)
     res_df = res_df.sort_values("动能评分", ascending=False).reset_index(drop=True)
     res_df["买入程度"] = res_df["动能评分"].apply(lambda s: recommend_level(s, p))
@@ -1216,7 +1225,7 @@ class AuctionStockPicker:
             filtered = filter_stocks(pool, params, market_pct)
 
         if len(filtered) > 0:
-            res_df = _enrich_and_score(filtered, market_pct, params)
+            res_df = (_enrich_demo if demo else _enrich_and_score)(filtered, market_pct, params)
             res_df, _ = add_sector_bonus(res_df, params)
             res_df = res_df.sort_values("动能评分", ascending=False).reset_index(drop=True)
             res_df["买入程度"] = res_df["动能评分"].apply(lambda s: recommend_level(s, params))
