@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-07-13",
+    "count": 3,
+    "temperature": 0.0,
+    "level": "极寒",
+    "avg_score": 57.9,
+    "max_score": 80.0,
+    "top1": "九芝堂",
+    "top1_code": "000989",
+    "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+    "params_tuned": true
+  },
+  {
     "date": "2026-07-10",
     "count": 0,
     "temperature": 35.0,
