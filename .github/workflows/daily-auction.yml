@@ -23,6 +23,8 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      FORCE_SINA: "1"          # GitHub Actions 环境东财不可达，强制走新浪数据源
 
     steps:
       - name: 检出仓库

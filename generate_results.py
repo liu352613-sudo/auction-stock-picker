@@ -37,6 +37,11 @@ DATA_DIR = os.path.join(ROOT, "data")
 KLINES_DIR = os.path.join(DATA_DIR, "klines")
 HISTORY_DIR = os.path.join(DATA_DIR, "history")
 
+# 环境变量 FORCE_SINA=1 时强制走新浪数据源（跳过东财重试，适用于 CI/GitHub Actions 等东财不可达环境）
+if os.environ.get("FORCE_SINA", "") in ("1", "true"):
+    data_service.force_sina(True)
+    print("[config] FORCE_SINA=1 → 强制新浪源，跳过东财重试")
+
 
 def to_native(v):
     """把 numpy / pandas 标量转成 JSON 原生类型。"""
