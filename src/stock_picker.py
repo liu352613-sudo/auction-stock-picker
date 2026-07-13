@@ -27,6 +27,7 @@ import json
 import os
 import sys
 import time
+import urllib.request
 from pathlib import Path
 
 import numpy as np
@@ -617,16 +618,41 @@ def get_industry(code):
 def get_stock_profile(code):
     """获取个股行业与总市值。返回 (行业, 总市值元)。失败返回 ('未知', 0.0)。
 
-    总市值单位与 AkShare 一致（元）。
+    多级回退：东财 individual_info → 腾讯 qt.gtimg.cn（总股本×现价）。
     """
+    # 优先：东财
     try:
         info = data_service.individual_info(code)
         d = {}
         for _, r in info.iterrows():
             d[str(r.iloc[0])] = r.iloc[1]
-        return d.get("行业", "未知"), _safe_num(d.get("总市值", 0))
+        industry = d.get("行业", "未知")
+        mv = _safe_num(d.get("总市值", 0))
+        if mv > 0:
+            return industry, mv
     except Exception:
-        return "未知", 0.0
+        pass
+
+    # 回退：腾讯接口（总股本 × 现价 = 市值）
+    try:
+        tencent_code = ("sh" if code.startswith(("6", "9")) else "sz") + code
+        url = f"http://qt.gtimg.cn/q={tencent_code}"
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0",
+        })
+        resp = urllib.request.urlopen(req, timeout=8)
+        text = resp.read().decode("gbk")
+        parts = text.split('="')[1].rstrip('";').split("~")
+        if len(parts) > 73:
+            total_shares = float(parts[72])  # 总股本（股）
+            price_now = float(parts[3])      # 现价
+            mv = round(total_shares * price_now, 2)  # 市值（元）
+            log(f"  get_stock_profile 腾讯回退 {code}: 总股本{total_shares:.0f}股 × 现价{price_now} = {mv:.0f}元")
+            return "未知", mv
+    except Exception as e:
+        log(f"  get_stock_profile 东财+腾讯均失败 {code}: {e}")
+
+    return "未知", 0.0
 
 
 # ----------------------------------------------------------------------------
@@ -783,12 +809,13 @@ def _enrich_and_score(filtered, market_pct, params=None):
         score = result["total"]
 
         # 涨停价（用于前端提示买入难度）：主板 10%、创业板/科创板 20%
+        # 注意：pct 是开盘涨幅%（基于开盘/昨收），必须用开盘价反推昨收
         limit_pct = 0.20 if code.startswith(("30", "68")) else 0.10
-        prev_close = price / (1 + pct / 100.0) if pct != 0 else price
+        open_price = _safe_num(row.get("开盘", price))
+        prev_close = open_price / (1 + pct / 100.0) if pct != 0 else open_price
         limit_up_price = round(prev_close * (1 + limit_pct), 2)
 
         # 买入价 = 开盘价（集合竞价成交口径）；止盈/止损基于开盘价计算
-        open_price = _safe_num(row.get("开盘", price))
         buy = round(open_price, 2)
         tp = round(open_price * (1 + p.take_profit), 2)
         sl = round(open_price * (1 - p.stop_loss), 2)
