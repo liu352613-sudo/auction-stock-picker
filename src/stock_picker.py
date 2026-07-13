@@ -787,9 +787,11 @@ def _enrich_and_score(filtered, market_pct, params=None):
         prev_close = price / (1 + pct / 100.0) if pct != 0 else price
         limit_up_price = round(prev_close * (1 + limit_pct), 2)
 
-        buy = round(price, 2)
-        tp = round(price * (1 + p.take_profit), 2)
-        sl = round(price * (1 - p.stop_loss), 2)
+        # 买入价 = 开盘价（集合竞价成交口径）；止盈/止损基于开盘价计算
+        open_price = _safe_num(row.get("开盘", price))
+        buy = round(open_price, 2)
+        tp = round(open_price * (1 + p.take_profit), 2)
+        sl = round(open_price * (1 - p.stop_loss), 2)
         records.append({
             "代码": code, "名称": name, "动能评分": score,
             "买入价": buy, "止盈价": tp, "止损价": sl,
@@ -929,10 +931,12 @@ def _enrich_demo(filtered, market_pct, params=None):
             fund_flow_5d_net=ff5, float_mv=5e10, is_st=False, market_pct=mp,
         )
         result = score_stock(feat, p)
+        # 买入价 = 开盘价（集合竞价成交口径）
+        open_price_demo = _safe_num(row.get("开盘", price))
         recs.append({
             "代码": code, "名称": row["名称"], "动能评分": result["total"],
-            "买入价": round(price, 2), "止盈价": round(price * (1 + p.take_profit), 2),
-            "止损价": round(price * (1 - p.stop_loss), 2), "行业": row["行业"],
+            "买入价": round(open_price_demo, 2), "止盈价": round(open_price_demo * (1 + p.take_profit), 2),
+            "止损价": round(open_price_demo * (1 - p.stop_loss), 2), "行业": row["行业"],
             "市值": round(float(row.get("市值", 0)), 2), "涨停价": round(price * 1.1, 2),
             "成交额": _safe_num(row.get("成交额", 0)),
             "最新价": round(price, 2), "明细": _to_detail(result),
