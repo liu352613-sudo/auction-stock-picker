@@ -28,6 +28,7 @@ import os
 import sys
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import numpy as np
@@ -372,13 +373,23 @@ def _get_stock_pool_sina():
 
     新浪 stock_zh_a_spot 为盘后全天数据且**不含量比列**，故：
       1) 以「开盘涨幅% =(今开-昨收)/昨收*100」近似竞价高开幅度，作为下游初筛/评分的「涨跌幅」口径；
-      2) 对粗筛候选逐只拉新浪日线，用「当日成交量 / 近 5 日均量」近似量比。
+      2) 对粗筛候选并发拉新浪日线，用「当日成交量 / 近 5 日均量」近似量比。
     返回列与东财路径同构：代码(6位)/名称/最新价/涨跌幅/成交量/成交额/量比/开盘/__code，
     完全复用下游 filter_stocks 与统一评分引擎，保持四端同源。
     """
-    spot = data_service.a_spot()
+    # 新浪快照可能偶发 "No value to decode"（限流），重试 3 次
+    spot = None
+    for attempt in range(1, 4):
+        try:
+            spot = data_service.a_spot()
+            if spot is not None and len(spot) > 0:
+                break
+        except Exception as e:
+            log(f"  [sina_pool] a_spot 第 {attempt}/3 次失败: {e}")
+        if attempt < 3:
+            time.sleep(2)
     if spot is None or len(spot) == 0:
-        raise ValueError("新浪快照返回空数据")
+        raise ValueError("新浪快照返回空数据（3 次重试均失败）")
     df = spot.copy()
     # 新浪代码带 sh/sz/bj 前缀 -> 统一为 6 位纯数字
     df["__code6"] = (
@@ -400,27 +411,40 @@ def _get_stock_pool_sina():
         & (~name.str.contains("ST", case=False, na=False))
         & (df["成交量"].fillna(0) > 0)
     ].copy()
-    coarse = coarse.sort_values("成交额", ascending=False).head(120)
-    log(f"新浪盘后回退：粗筛候选 {len(coarse)} 只，开始补算量比(近似)")
+    coarse = coarse.sort_values("成交额", ascending=False).head(40)
+    log(f"新浪盘后回退：粗筛候选 {len(coarse)} 只，开始并发补算量比(近似)")
     end = pd.Timestamp.now().strftime("%Y-%m-%d")
     start = (pd.Timestamp.now() - pd.Timedelta(days=40)).strftime("%Y-%m-%d")
-    ratios = []
-    for _, r in coarse.iterrows():
-        code6 = r["__code6"]
-        vr = 0.0
-        try:
-            h = data_service.stock_hist(code6, start, end, adjust="qfq")
-            if h is not None and len(h):
-                vols = pd.to_numeric(h["成交量"], errors="coerce").dropna()
-                if len(vols) >= 6:
-                    today_vol = float(vols.iloc[-1])
-                    avg5 = float(vols.iloc[-6:-1].mean())  # 近 5 日(不含当日)均量
-                    vr = round(today_vol / avg5, 2) if avg5 > 0 else 0.0
-        except Exception:
-            vr = 0.0
-        ratios.append(vr)
-        time.sleep(0.02)
-    coarse["量比"] = ratios
+
+    def _calc_vol_ratio(row):
+        """单只股票：拉日线算近似量比（带 1 次重试）。"""
+        code6 = row["__code6"]
+        for retry in range(2):
+            try:
+                h = data_service.stock_hist(code6, start, end, adjust="qfq")
+                if h is not None and len(h):
+                    vols = pd.to_numeric(h["成交量"], errors="coerce").dropna()
+                    if len(vols) >= 6:
+                        today_vol = float(vols.iloc[-1])
+                        avg5 = float(vols.iloc[-6:-1].mean())
+                        return round(today_vol / avg5, 2) if avg5 > 0 else 0.0
+            except Exception:
+                if retry == 0:
+                    time.sleep(0.5)
+        return 0.0
+
+    # 并发拉取（4 线程，避免触发新浪限流）
+    code_ratio_map = {}
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {pool.submit(_calc_vol_ratio, r): r["__code6"] for _, r in coarse.iterrows()}
+        for fut in as_completed(futures):
+            code6 = futures[fut]
+            try:
+                code_ratio_map[code6] = fut.result()
+            except Exception:
+                code_ratio_map[code6] = 0.0
+
+    coarse["量比"] = coarse["__code6"].map(code_ratio_map).fillna(0.0)
     out = pd.DataFrame({
         "代码": coarse["__code6"].values,
         "名称": coarse["名称"].astype(str).values,
@@ -445,16 +469,20 @@ def get_stock_pool():
     force_sina 开启时直接走新浪。两条路径均返回同构列，下游完全复用统一评分引擎。
     """
     global _POOL_SOURCE
-    # force_sina：直接走新浪盘后回退
+    # force_sina：直接走新浪盘后回退（带 2 次重试，应对偶发限流）
     if getattr(data_service, "_prefer", "auto") == "sina":
-        try:
-            df = _get_stock_pool_sina()
-            _POOL_SOURCE = "sina"
-            log(f"get_stock_pool[新浪盘后]：候选 {len(df)} 只")
-            return df
-        except Exception as e:
-            log(f"警告: 新浪盘后回退失败: {e}")
-            return pd.DataFrame(columns=["代码", "名称", "最新价", "涨跌幅", "成交量", "成交额", "量比", "开盘", "__code"])
+        for sina_attempt in range(1, 4):
+            try:
+                df = _get_stock_pool_sina()
+                _POOL_SOURCE = "sina"
+                log(f"get_stock_pool[新浪盘后]：候选 {len(df)} 只")
+                return df
+            except Exception as e:
+                log(f"  [get_stock_pool] 新浪回退第 {sina_attempt}/3 次: {e}")
+                if sina_attempt < 3:
+                    time.sleep(3)
+        log("警告: 新浪盘后回退 3 次均失败，返回空池")
+        return pd.DataFrame(columns=["代码", "名称", "最新价", "涨跌幅", "成交量", "成交额", "量比", "开盘", "__code"])
 
     headers = {
         "User-Agent": (
