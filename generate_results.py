@@ -73,14 +73,19 @@ INDEX_FALLBACK = [
 
 
 def fetch_indices():
-    """实时拉取主要指数行情（经统一 DataService）。返回 (list, live)。"""
+    """实时拉取主要指数行情（经统一 DataService）。返回 (list, live)。
+
+    先东财 index_spot_em；受限时回退新浪 index_spot_sina（同为实时真实数据）；
+    两者均不可达才使用内置静态回退（标记 live=False）。
+    """
+    # 1) 东方财富
     try:
         df = data_service.index_spot_em()
         name_col = "指数名称" if "指数名称" in df.columns else df.columns[1]
         pool = {}
         for _, r in df.iterrows():
             nm = str(r[name_col])
-            if nm in INDEX_WANTED:
+            if nm in INDEX_WANTED and nm not in pool:
                 pool[nm] = {
                     "name": nm,
                     "code": str(r.get("指数代码", "")),
@@ -91,9 +96,31 @@ def fetch_indices():
         rows = [pool[n] for n in INDEX_WANTED if n in pool]
         if rows:
             return rows, True
-        print("  [warn] 未匹配到目标指数，使用内置回退数据。")
+        print("  [warn] 东财未匹配到目标指数，尝试新浪。")
     except Exception as e:
-        print(f"  [warn] 指数行情拉取失败，使用内置回退数据: {e}")
+        print(f"  [warn] 东财指数拉取失败，尝试新浪: {e}")
+    # 2) 新浪（受限网络回退，仍是实时真实数据）
+    try:
+        df = data_service.index_spot_sina()
+        pool = {}
+        for _, r in df.iterrows():
+            nm = str(r.get("名称", ""))
+            if nm in INDEX_WANTED and nm not in pool:
+                code = str(r.get("代码", "")).replace("sh", "").replace("sz", "")
+                pool[nm] = {
+                    "name": nm,
+                    "code": code,
+                    "val": round(float(r.get("最新价", 0)), 2),
+                    "diff": round(float(r.get("涨跌额", 0)), 2),
+                    "pct": f"{float(r.get('涨跌幅', 0)):+.2f}%",
+                }
+        rows = [pool[n] for n in INDEX_WANTED if n in pool]
+        if rows:
+            return rows, True
+        print("  [warn] 新浪未匹配到目标指数，使用内置回退数据。")
+    except Exception as e:
+        print(f"  [warn] 新浪指数拉取失败，使用内置回退数据: {e}")
+    # 3) 内置静态回退
     return [dict(x) for x in INDEX_FALLBACK], False
 
 

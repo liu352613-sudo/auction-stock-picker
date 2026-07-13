@@ -360,14 +360,101 @@ def calc_dynamic_threshold(market_pct, params=None):
 # ----------------------------------------------------------------------------
 # 模块 3: 股票池 & 初筛
 # ----------------------------------------------------------------------------
+# 记录本次 get_stock_pool 实际使用的数据源口径，供 pick_stocks 标注。
+#   "em"    -> 东方财富集合竞价实时（含真实量比，~09:26 竞价口径）
+#   "sina"  -> 新浪盘后回退（无量比列，量比为「当日量/近5日均量」近似、涨幅为开盘涨幅近似）
+_POOL_SOURCE = "em"
+
+
+def _get_stock_pool_sina():
+    """东财受限时的盘后回退：用新浪全 A 快照重建股票池。
+
+    新浪 stock_zh_a_spot 为盘后全天数据且**不含量比列**，故：
+      1) 以「开盘涨幅% =(今开-昨收)/昨收*100」近似竞价高开幅度，作为下游初筛/评分的「涨跌幅」口径；
+      2) 对粗筛候选逐只拉新浪日线，用「当日成交量 / 近 5 日均量」近似量比。
+    返回列与东财路径同构：代码(6位)/名称/最新价/涨跌幅/成交量/成交额/量比/开盘/__code，
+    完全复用下游 filter_stocks 与统一评分引擎，保持四端同源。
+    """
+    spot = data_service.a_spot()
+    if spot is None or len(spot) == 0:
+        raise ValueError("新浪快照返回空数据")
+    df = spot.copy()
+    # 新浪代码带 sh/sz/bj 前缀 -> 统一为 6 位纯数字
+    df["__code6"] = (
+        df["代码"].astype(str).str.replace(r"^(sh|sz|bj)", "", regex=True).str.zfill(6)
+    )
+    df = df[df["__code6"].str.startswith(BOARD_PREFIX)].copy()
+    for c in ("最新价", "昨收", "今开", "成交量", "成交额"):
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+    # 开盘涨幅（近似竞价高开幅度）
+    df["开盘涨幅"] = (df["今开"] - df["昨收"]) / df["昨收"] * 100.0
+    name = df["名称"].astype(str)
+    p0 = StrategyParams()
+    # 粗筛：显著高开 + 成交额达标 + 非 ST + 有成交，降低逐只拉日线的网络成本
+    coarse = df[
+        (df["开盘涨幅"] >= 1.0)
+        & (df["开盘涨幅"] <= 8.0)
+        & (df["成交额"] >= p0.auction_amount_min)
+        & (~name.str.contains("ST", case=False, na=False))
+        & (df["成交量"].fillna(0) > 0)
+    ].copy()
+    coarse = coarse.sort_values("成交额", ascending=False).head(120)
+    log(f"新浪盘后回退：粗筛候选 {len(coarse)} 只，开始补算量比(近似)")
+    end = pd.Timestamp.now().strftime("%Y-%m-%d")
+    start = (pd.Timestamp.now() - pd.Timedelta(days=40)).strftime("%Y-%m-%d")
+    ratios = []
+    for _, r in coarse.iterrows():
+        code6 = r["__code6"]
+        vr = 0.0
+        try:
+            h = data_service.stock_hist(code6, start, end, adjust="qfq")
+            if h is not None and len(h):
+                vols = pd.to_numeric(h["成交量"], errors="coerce").dropna()
+                if len(vols) >= 6:
+                    today_vol = float(vols.iloc[-1])
+                    avg5 = float(vols.iloc[-6:-1].mean())  # 近 5 日(不含当日)均量
+                    vr = round(today_vol / avg5, 2) if avg5 > 0 else 0.0
+        except Exception:
+            vr = 0.0
+        ratios.append(vr)
+        time.sleep(0.02)
+    coarse["量比"] = ratios
+    out = pd.DataFrame({
+        "代码": coarse["__code6"].values,
+        "名称": coarse["名称"].astype(str).values,
+        "最新价": coarse["最新价"].values,
+        "涨跌幅": coarse["开盘涨幅"].values,   # 以开盘涨幅作为竞价涨幅口径
+        "成交量": coarse["成交量"].values,
+        "成交额": coarse["成交额"].values,
+        "量比": coarse["量比"].values,
+        "开盘": coarse["今开"].values,
+    })
+    out["__code"] = out["代码"].astype(str)
+    return out
+
+
 def get_stock_pool():
     """获取全市场 A 股实时行情（剔除非主选板块）。
 
-    使用 AkShare 的东方财富接口 stock_zh_a_spot_em（该接口包含「量比」字段，
-    而新浪 stock_zh_a_spot 实际不返回量比列，故改回东方财富）。
+    优先东方财富 stock_zh_a_spot_em（含真实「量比」列，竞价 ~09:26 口径），
     带重试：重试 3 次、每次间隔 3 秒、模拟浏览器 UA。
-    若所有尝试均失败，打印警告并返回空 DataFrame。
+    东财全部失败（如受限网络）时，回退新浪盘后快照 _get_stock_pool_sina()，
+    以开盘涨幅/近似量比重建同构股票池，保证在受限环境仍能产出真实数据。
+    force_sina 开启时直接走新浪。两条路径均返回同构列，下游完全复用统一评分引擎。
     """
+    global _POOL_SOURCE
+    # force_sina：直接走新浪盘后回退
+    if getattr(data_service, "_prefer", "auto") == "sina":
+        try:
+            df = _get_stock_pool_sina()
+            _POOL_SOURCE = "sina"
+            log(f"get_stock_pool[新浪盘后]：候选 {len(df)} 只")
+            return df
+        except Exception as e:
+            log(f"警告: 新浪盘后回退失败: {e}")
+            return pd.DataFrame(columns=["代码", "名称", "最新价", "涨跌幅", "成交量", "成交额", "量比", "开盘", "__code"])
+
     headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -389,6 +476,7 @@ def get_stock_pool():
                 df = df.rename(columns={"今开": "开盘"})
             df["__code"] = df["代码"].astype(str)
             df = df[df["__code"].str.startswith(BOARD_PREFIX)].copy()
+            _POOL_SOURCE = "em"
             return df
         except Exception as e:
             last_err = e
@@ -396,8 +484,16 @@ def get_stock_pool():
             if attempt < 3:
                 time.sleep(3)
 
-    log(f"警告: get_stock_pool 全部 3 次尝试失败，返回空列表。最后一次错误: {last_err}")
-    return pd.DataFrame(columns=["代码", "名称", "最新价", "涨跌幅", "成交量", "成交额", "量比", "开盘", "__code"])
+    # 东财全部失败 -> 新浪盘后回退（受限网络下仍产出真实数据）
+    log(f"东财 3 次尝试失败({last_err})，回退新浪盘后快照。")
+    try:
+        df = _get_stock_pool_sina()
+        _POOL_SOURCE = "sina"
+        log(f"get_stock_pool[新浪盘后回退]：候选 {len(df)} 只")
+        return df
+    except Exception as e2:
+        log(f"警告: 新浪盘后回退亦失败: {e2}，返回空列表。")
+        return pd.DataFrame(columns=["代码", "名称", "最新价", "涨跌幅", "成交量", "成交额", "量比", "开盘", "__code"])
 
 
 def get_new_stock_codes(days=NEW_STOCK_DAYS):
@@ -1304,11 +1400,18 @@ class AuctionStockPicker:
                 "行业", "量比", "开盘涨幅%", "买入程度",
             ])
 
+        if demo:
+            data_source = "内置样例数据(DEMO)"
+        elif _POOL_SOURCE == "sina":
+            data_source = "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）"
+        else:
+            data_source = "AkShare（集合竞价 ~09:26）"
+
         return {
             "temperature": temp,
             "low": low,
             "high": high,
             "stocks": res_df,
             "generated_at": _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "data_source": "AkShare（集合竞价 ~09:26）" if not demo else "内置样例数据(DEMO)",
+            "data_source": data_source,
         }
