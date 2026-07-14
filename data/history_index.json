@@ -1,13 +1,13 @@
 [
   {
     "date": "2026-07-13",
-    "count": 1,
-    "temperature": 39.0,
-    "level": "寒冷",
-    "avg_score": 59.7,
-    "max_score": 59.7,
-    "top1": "哈药股份",
-    "top1_code": "600664",
+    "count": 0,
+    "temperature": 75.0,
+    "level": "温暖",
+    "avg_score": 0.0,
+    "max_score": 0.0,
+    "top1": "",
+    "top1_code": "",
     "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
     "params_tuned": true
   },
