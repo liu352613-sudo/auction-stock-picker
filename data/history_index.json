@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-07-16",
+    "count": 1,
+    "temperature": 8.7,
+    "level": "极寒",
+    "avg_score": 48.6,
+    "max_score": 48.6,
+    "top1": "中利集团",
+    "top1_code": "002309",
+    "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+    "params_tuned": true
+  },
+  {
     "date": "2026-07-15",
     "count": 0,
     "temperature": 34.4,
