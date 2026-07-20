@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-07-20",
+    "count": 0,
+    "temperature": 40.0,
+    "level": "常温",
+    "avg_score": 0.0,
+    "max_score": 0.0,
+    "top1": "",
+    "top1_code": "",
+    "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+    "params_tuned": true
+  },
+  {
     "date": "2026-07-16",
     "count": 0,
     "temperature": 0.0,
