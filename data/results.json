@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-20 11:33:19",
+  "generated_at": "2026-07-21 04:45:30",
   "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
-  "update_time": "11:33",
+  "update_time": "04:45",
   "trade_date": "2026-07-20",
   "params": {
     "vol_ratio_min": 3.5,
@@ -32,10 +32,10 @@
     "level_cautious": 40.0
   },
   "temperature": {
-    "total": 40.0,
+    "total": 50.0,
     "level": "常温",
     "position": 60,
-    "market_pct": 0.52
+    "market_pct": 2.75
   },
   "stocks": [],
   "recommendations": [],
@@ -46,37 +46,37 @@
     {
       "name": "上证指数",
       "code": "000001",
-      "val": 3796.28,
-      "diff": 32.13,
-      "pct": "+0.85%"
+      "val": 3819.66,
+      "diff": 23.37,
+      "pct": "+0.62%"
     },
     {
       "name": "深证成指",
       "code": "399001",
-      "val": 13610.23,
-      "diff": -96.65,
-      "pct": "-0.70%"
+      "val": 14074.22,
+      "diff": 463.99,
+      "pct": "+3.41%"
     },
     {
       "name": "创业板指",
       "code": "399006",
-      "val": 3443.1,
-      "diff": 14.47,
-      "pct": "+0.42%"
+      "val": 3622.27,
+      "diff": 179.17,
+      "pct": "+5.20%"
     },
     {
       "name": "科创50",
       "code": "000688",
-      "val": 1718.69,
-      "diff": 3.29,
-      "pct": "+0.19%"
+      "val": 1837.94,
+      "diff": 119.25,
+      "pct": "+6.94%"
     },
     {
       "name": "沪深300",
       "code": "000300",
-      "val": 4598.32,
-      "diff": 69.23,
-      "pct": "+1.53%"
+      "val": 4679.41,
+      "diff": 81.09,
+      "pct": "+1.76%"
     }
   ],
   "indices_live": true
