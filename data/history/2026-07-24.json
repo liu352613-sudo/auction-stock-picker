@@ -1,8 +1,8 @@
 {
+  "date": "2026-07-24",
   "generated_at": "2026-07-27 04:59:32",
+  "snapshot_at": "2026-07-27 04:59:47",
   "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
-  "update_time": "04:59",
-  "trade_date": "2026-07-24",
   "params": {
     "vol_ratio_min": 3.5,
     "auction_amount_min": 3000000,
@@ -31,17 +31,17 @@
     "level_mid": 60.0,
     "level_cautious": 40.0
   },
+  "params_tuned": true,
+  "tuned_at": "2026-07-11 14:39:24",
   "temperature": {
     "total": 75.0,
     "level": "温暖",
     "position": 80,
     "market_pct": 0.9
   },
-  "stocks": [],
-  "recommendations": [],
-  "top3": [],
-  "all": [],
   "count": 0,
+  "stocks": [],
+  "top3": [],
   "indices": [
     {
       "name": "上证指数",
@@ -78,6 +78,5 @@
       "diff": 11.83,
       "pct": "+0.25%"
     }
-  ],
-  "indices_live": true
+  ]
 }
