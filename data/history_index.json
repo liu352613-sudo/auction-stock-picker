@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-08-07",
+    "count": 0,
+    "temperature": 32.9,
+    "level": "寒冷",
+    "avg_score": 0.0,
+    "max_score": 0.0,
+    "top1": "",
+    "top1_code": "",
+    "data_source": "AkShare（集合竞价 ~09:26）",
+    "params_tuned": true
+  },
+  {
     "date": "2026-08-06",
     "count": 0,
     "temperature": 46.4,
