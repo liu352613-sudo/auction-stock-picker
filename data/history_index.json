@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-08-14",
+    "count": 2,
+    "temperature": 37.5,
+    "level": "寒冷",
+    "avg_score": 58.5,
+    "max_score": 65.0,
+    "top1": "金 螳 螂",
+    "top1_code": "002081",
+    "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+    "params_tuned": true
+  },
+  {
     "date": "2026-08-13",
     "count": 0,
     "temperature": 31.0,
