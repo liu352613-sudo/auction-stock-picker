@@ -1,8 +1,8 @@
 {
+  "date": "2026-08-24",
   "generated_at": "2026-08-25 02:34:47",
+  "snapshot_at": "2026-08-25 02:35:11",
   "data_source": "AkShare（集合竞价 ~09:26）",
-  "update_time": "02:34",
-  "trade_date": "2026-08-24",
   "params": {
     "vol_ratio_min": 3.5,
     "auction_amount_min": 3000000,
@@ -31,17 +31,17 @@
     "level_mid": 60.0,
     "level_cautious": 40.0
   },
+  "params_tuned": true,
+  "tuned_at": "2026-07-11 14:39:24",
   "temperature": {
     "total": 37.1,
     "level": "寒冷",
     "position": 40,
     "market_pct": -0.59
   },
-  "stocks": [],
-  "recommendations": [],
-  "top3": [],
-  "all": [],
   "count": 0,
+  "stocks": [],
+  "top3": [],
   "indices": [
     {
       "name": "上证指数",
@@ -78,6 +78,5 @@
       "diff": -95.52,
       "pct": "-1.96%"
     }
-  ],
-  "indices_live": false
+  ]
 }
