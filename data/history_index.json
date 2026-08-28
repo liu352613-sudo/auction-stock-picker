@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-08-28",
+    "count": 2,
+    "temperature": 26.7,
+    "level": "寒冷",
+    "avg_score": 61.2,
+    "max_score": 69.2,
+    "top1": "湖南黄金",
+    "top1_code": "002155",
+    "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+    "params_tuned": true
+  },
+  {
     "date": "2026-08-27",
     "count": 0,
     "temperature": 69.1,
