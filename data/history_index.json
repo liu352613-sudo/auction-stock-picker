@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-09-01",
+    "count": 1,
+    "temperature": 0.0,
+    "level": "极寒",
+    "avg_score": 58.4,
+    "max_score": 58.4,
+    "top1": "内蒙一机",
+    "top1_code": "600967",
+    "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+    "params_tuned": true
+  },
+  {
     "date": "2026-08-31",
     "count": 0,
     "temperature": 34.6,
