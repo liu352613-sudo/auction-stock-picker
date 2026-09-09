@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-09-08",
+    "count": 1,
+    "temperature": 30.2,
+    "level": "寒冷",
+    "avg_score": 52.4,
+    "max_score": 52.4,
+    "top1": "北方铜业",
+    "top1_code": "000737",
+    "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+    "params_tuned": true
+  },
+  {
     "date": "2026-09-07",
     "count": 0,
     "temperature": 48.9,
