@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-09-09",
+    "count": 1,
+    "temperature": 12.9,
+    "level": "极寒",
+    "avg_score": 59.5,
+    "max_score": 59.5,
+    "top1": "海欣食品",
+    "top1_code": "002702",
+    "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+    "params_tuned": true
+  },
+  {
     "date": "2026-09-08",
     "count": 1,
     "temperature": 30.2,
