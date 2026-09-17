@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-09-16",
+    "count": 1,
+    "temperature": 21.0,
+    "level": "寒冷",
+    "avg_score": 57.0,
+    "max_score": 57.0,
+    "top1": "恒立液压",
+    "top1_code": "601100",
+    "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+    "params_tuned": true
+  },
+  {
     "date": "2026-09-15",
     "count": 0,
     "temperature": 75.0,
