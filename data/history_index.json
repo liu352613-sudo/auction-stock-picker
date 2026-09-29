@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-09-28",
+    "count": 1,
+    "temperature": 61.6,
+    "level": "温暖",
+    "avg_score": 78.1,
+    "max_score": 78.1,
+    "top1": "丽珠集团",
+    "top1_code": "000513",
+    "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+    "params_tuned": true
+  },
+  {
     "date": "2026-09-24",
     "count": 0,
     "temperature": 0.0,
