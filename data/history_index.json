@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-10-12",
+    "count": 3,
+    "temperature": 38.1,
+    "level": "寒冷",
+    "avg_score": 59.9,
+    "max_score": 64.8,
+    "top1": "莱美药业",
+    "top1_code": "300006",
+    "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+    "params_tuned": true
+  },
+  {
     "date": "2026-10-09",
     "count": 2,
     "temperature": 0.0,
