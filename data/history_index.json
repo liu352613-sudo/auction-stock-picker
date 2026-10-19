@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-10-16",
+    "count": 1,
+    "temperature": 37.7,
+    "level": "寒冷",
+    "avg_score": 77.8,
+    "max_score": 77.8,
+    "top1": "天汽模",
+    "top1_code": "002510",
+    "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+    "params_tuned": true
+  },
+  {
     "date": "2026-10-15",
     "count": 0,
     "temperature": 66.7,
