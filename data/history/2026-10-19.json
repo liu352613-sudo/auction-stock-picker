@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-19",
+  "generated_at": "2026-10-20 06:10:38",
+  "snapshot_at": "2026-10-20 06:11:01",
+  "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+  "params": {
+    "vol_ratio_min": 3.5,
+    "auction_amount_min": 3000000,
+    "new_stock_days": 60,
+    "threshold_lo_base": 2.0,
+    "threshold_hi_base": 8.0,
+    "threshold_lo_offset": 1.5,
+    "threshold_hi_offset": 6.0,
+    "take_profit": 0.05,
+    "stop_loss": 0.03,
+    "sector_bonus": 5.0,
+    "w_vol_ratio": 30.0,
+    "w_rel_market": 20.0,
+    "w_ma60_dev": 25.0,
+    "w_vol_energy": 25.0,
+    "vol_ratio_top": 5.0,
+    "ma60_dev_sweet": 0.05,
+    "ma60_dev_max": 0.15,
+    "vol_energy_lo": 0.03,
+    "vol_energy_hi": 0.1,
+    "filter_st": true,
+    "filter_new_stock": true,
+    "filter_suspended": true,
+    "filter_limit_up": true,
+    "level_strong": 80.0,
+    "level_mid": 60.0,
+    "level_cautious": 40.0
+  },
+  "params_tuned": true,
+  "tuned_at": "2026-07-11 14:39:24",
+  "temperature": {
+    "total": 14.0,
+    "level": "极寒",
+    "position": 20,
+    "market_pct": -1.05
+  },
+  "count": 0,
+  "stocks": [],
+  "top3": [],
+  "indices": [
+    {
+      "name": "上证指数",
+      "code": "000001",
+      "val": 3706.58,
+      "diff": -24.34,
+      "pct": "-0.65%"
+    },
+    {
+      "name": "深证成指",
+      "code": "399001",
+      "val": 11709.45,
+      "diff": -107.97,
+      "pct": "-0.91%"
+    },
+    {
+      "name": "创业板指",
+      "code": "399006",
+      "val": 2712.26,
+      "diff": -34.03,
+      "pct": "-1.24%"
+    },
+    {
+      "name": "科创50",
+      "code": "000688",
+      "val": 1322.94,
+      "diff": -6.25,
+      "pct": "-0.47%"
+    },
+    {
+      "name": "沪深300",
+      "code": "000300",
+      "val": 4117.31,
+      "diff": -57.23,
+      "pct": "-1.37%"
+    }
+  ]
+}
