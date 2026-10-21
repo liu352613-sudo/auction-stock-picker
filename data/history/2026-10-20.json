@@ -1,0 +1,300 @@
+{
+  "date": "2026-10-20",
+  "generated_at": "2026-10-21 06:13:23",
+  "snapshot_at": "2026-10-21 06:13:37",
+  "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+  "params": {
+    "vol_ratio_min": 3.5,
+    "auction_amount_min": 3000000,
+    "new_stock_days": 60,
+    "threshold_lo_base": 2.0,
+    "threshold_hi_base": 8.0,
+    "threshold_lo_offset": 1.5,
+    "threshold_hi_offset": 6.0,
+    "take_profit": 0.05,
+    "stop_loss": 0.03,
+    "sector_bonus": 5.0,
+    "w_vol_ratio": 30.0,
+    "w_rel_market": 20.0,
+    "w_ma60_dev": 25.0,
+    "w_vol_energy": 25.0,
+    "vol_ratio_top": 5.0,
+    "ma60_dev_sweet": 0.05,
+    "ma60_dev_max": 0.15,
+    "vol_energy_lo": 0.03,
+    "vol_energy_hi": 0.1,
+    "filter_st": true,
+    "filter_new_stock": true,
+    "filter_suspended": true,
+    "filter_limit_up": true,
+    "level_strong": 80.0,
+    "level_mid": 60.0,
+    "level_cautious": 40.0
+  },
+  "params_tuned": true,
+  "tuned_at": "2026-07-11 14:39:24",
+  "temperature": {
+    "total": 4.5,
+    "level": "极寒",
+    "position": 20,
+    "market_pct": -0.83
+  },
+  "count": 1,
+  "stocks": [
+    {
+      "排名": 1,
+      "代码": "300115",
+      "名称": "长盈精密",
+      "板块": "消费电子",
+      "现价": 26.69,
+      "涨跌幅": 2.63,
+      "评分": 71.0,
+      "建议": "极小仓观察",
+      "买入程度": "谨慎",
+      "交易额": 3299089231.0,
+      "市值": 362.53,
+      "涨停价": 29.6,
+      "买入价": 25.32,
+      "止盈价": 26.59,
+      "止损价": 24.56,
+      "量比": 4.7,
+      "评分明细": {
+        "量比分": 14.4,
+        "相对大盘分": 12.0,
+        "均线偏离分": 15.0,
+        "量能比分": 12.0,
+        "偏离度%": 7.95,
+        "量能比%": 504.75,
+        "dimensions": [
+          {
+            "key": "vol_ratio",
+            "label": "量比",
+            "score": 14.4,
+            "max": 18.0,
+            "note": "量比 4.70，高于阈值"
+          },
+          {
+            "key": "amount",
+            "label": "竞价金额",
+            "score": 12.0,
+            "max": 12.0,
+            "note": "竞价额 32.99亿，强资金介入"
+          },
+          {
+            "key": "rel_market",
+            "label": "相对大盘",
+            "score": 12.0,
+            "max": 12.0,
+            "note": "相对大盘 +3.46%，明显强于大盘"
+          },
+          {
+            "key": "ma60_dev",
+            "label": "均线偏离",
+            "score": 15.0,
+            "max": 15.0,
+            "note": "偏离60日线 +8.0%，处于甜区"
+          },
+          {
+            "key": "vol_energy",
+            "label": "量能比",
+            "score": 12.0,
+            "max": 12.0,
+            "note": "量能比 504.8%，竞价量充沛"
+          },
+          {
+            "key": "fund_flow",
+            "label": "资金流",
+            "score": 8.46,
+            "max": 12.0,
+            "note": "主力净流入 +1.30亿，温和流入"
+          },
+          {
+            "key": "sector",
+            "label": "板块热度",
+            "score": 5.0,
+            "max": 10.0,
+            "note": "板块热度 0.50，板块偏强"
+          },
+          {
+            "key": "trend",
+            "label": "趋势",
+            "score": 0.0,
+            "max": 9.0,
+            "note": "趋势 空头排列（0/3）"
+          }
+        ],
+        "risk_factor": 0.9,
+        "total": 70.98
+      },
+      "features": {
+        "code": "300115",
+        "name": "长盈精密",
+        "sector": "消费电子",
+        "price": 26.69,
+        "vol_ratio": 4.7,
+        "pct_open": 2.634779083907574,
+        "auction_amount": 3299089231.0,
+        "auction_volume": 129600728.0,
+        "fund_flow_today_net": 0.0,
+        "ma60": 24.72383333333333,
+        "ma20": 22.3945,
+        "ma10": 21.148000000000003,
+        "ma5": 20.81,
+        "prev_volume": 25675998.0,
+        "volatility": 0.7979321816103451,
+        "fund_flow_5d_net": 130412734.6,
+        "sector_heat": 0.5,
+        "float_mv": 36252753189.63,
+        "is_st": false,
+        "market_pct": -0.83
+      }
+    }
+  ],
+  "top3": [
+    {
+      "排名": 1,
+      "代码": "300115",
+      "名称": "长盈精密",
+      "板块": "消费电子",
+      "现价": 26.69,
+      "涨跌幅": 2.63,
+      "评分": 71.0,
+      "建议": "极小仓观察",
+      "买入程度": "谨慎",
+      "交易额": 3299089231.0,
+      "市值": 362.53,
+      "涨停价": 29.6,
+      "买入价": 25.32,
+      "止盈价": 26.59,
+      "止损价": 24.56,
+      "量比": 4.7,
+      "评分明细": {
+        "量比分": 14.4,
+        "相对大盘分": 12.0,
+        "均线偏离分": 15.0,
+        "量能比分": 12.0,
+        "偏离度%": 7.95,
+        "量能比%": 504.75,
+        "dimensions": [
+          {
+            "key": "vol_ratio",
+            "label": "量比",
+            "score": 14.4,
+            "max": 18.0,
+            "note": "量比 4.70，高于阈值"
+          },
+          {
+            "key": "amount",
+            "label": "竞价金额",
+            "score": 12.0,
+            "max": 12.0,
+            "note": "竞价额 32.99亿，强资金介入"
+          },
+          {
+            "key": "rel_market",
+            "label": "相对大盘",
+            "score": 12.0,
+            "max": 12.0,
+            "note": "相对大盘 +3.46%，明显强于大盘"
+          },
+          {
+            "key": "ma60_dev",
+            "label": "均线偏离",
+            "score": 15.0,
+            "max": 15.0,
+            "note": "偏离60日线 +8.0%，处于甜区"
+          },
+          {
+            "key": "vol_energy",
+            "label": "量能比",
+            "score": 12.0,
+            "max": 12.0,
+            "note": "量能比 504.8%，竞价量充沛"
+          },
+          {
+            "key": "fund_flow",
+            "label": "资金流",
+            "score": 8.46,
+            "max": 12.0,
+            "note": "主力净流入 +1.30亿，温和流入"
+          },
+          {
+            "key": "sector",
+            "label": "板块热度",
+            "score": 5.0,
+            "max": 10.0,
+            "note": "板块热度 0.50，板块偏强"
+          },
+          {
+            "key": "trend",
+            "label": "趋势",
+            "score": 0.0,
+            "max": 9.0,
+            "note": "趋势 空头排列（0/3）"
+          }
+        ],
+        "risk_factor": 0.9,
+        "total": 70.98
+      },
+      "features": {
+        "code": "300115",
+        "name": "长盈精密",
+        "sector": "消费电子",
+        "price": 26.69,
+        "vol_ratio": 4.7,
+        "pct_open": 2.634779083907574,
+        "auction_amount": 3299089231.0,
+        "auction_volume": 129600728.0,
+        "fund_flow_today_net": 0.0,
+        "ma60": 24.72383333333333,
+        "ma20": 22.3945,
+        "ma10": 21.148000000000003,
+        "ma5": 20.81,
+        "prev_volume": 25675998.0,
+        "volatility": 0.7979321816103451,
+        "fund_flow_5d_net": 130412734.6,
+        "sector_heat": 0.5,
+        "float_mv": 36252753189.63,
+        "is_st": false,
+        "market_pct": -0.83
+      }
+    }
+  ],
+  "indices": [
+    {
+      "name": "上证指数",
+      "code": "000001",
+      "val": 3714.23,
+      "diff": -21.14,
+      "pct": "-0.57%"
+    },
+    {
+      "name": "深证成指",
+      "code": "399001",
+      "val": 11729.44,
+      "diff": -71.85,
+      "pct": "-0.61%"
+    },
+    {
+      "name": "创业板指",
+      "code": "399006",
+      "val": 2700.2,
+      "diff": -39.01,
+      "pct": "-1.42%"
+    },
+    {
+      "name": "科创50",
+      "code": "000688",
+      "val": 1347.13,
+      "diff": 4.71,
+      "pct": "+0.35%"
+    },
+    {
+      "name": "沪深300",
+      "code": "000300",
+      "val": 4112.18,
+      "diff": -39.93,
+      "pct": "-0.96%"
+    }
+  ]
+}
