@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-11-02 07:47:45",
+  "generated_at": "2026-11-03 08:03:06",
   "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
-  "update_time": "07:47",
-  "trade_date": "2026-10-30",
+  "update_time": "08:03",
+  "trade_date": "2026-11-02",
   "params": {
     "vol_ratio_min": 3.5,
     "auction_amount_min": 3000000,
@@ -32,10 +32,10 @@
     "level_cautious": 40.0
   },
   "temperature": {
-    "total": 75.0,
-    "level": "温暖",
-    "position": 80,
-    "market_pct": 1.34
+    "total": 3.2,
+    "level": "极寒",
+    "position": 20,
+    "market_pct": -1.24
   },
   "stocks": [],
   "recommendations": [],
@@ -46,37 +46,37 @@
     {
       "name": "上证指数",
       "code": "000001",
-      "val": 3638.03,
-      "diff": 39.01,
-      "pct": "+1.08%"
+      "val": 3608.1,
+      "diff": -29.93,
+      "pct": "-0.82%"
     },
     {
       "name": "深证成指",
       "code": "399001",
-      "val": 11010.68,
-      "diff": 176.89,
-      "pct": "+1.63%"
+      "val": 10876.99,
+      "diff": -133.69,
+      "pct": "-1.21%"
     },
     {
       "name": "创业板指",
       "code": "399006",
-      "val": 2458.7,
-      "diff": 45.07,
-      "pct": "+1.87%"
+      "val": 2391.65,
+      "diff": -67.05,
+      "pct": "-2.73%"
     },
     {
       "name": "科创50",
       "code": "000688",
-      "val": 1196.94,
-      "diff": 36.1,
-      "pct": "+3.11%"
+      "val": 1151.28,
+      "diff": -45.65,
+      "pct": "-3.81%"
     },
     {
       "name": "沪深300",
       "code": "000300",
-      "val": 4016.92,
-      "diff": 31.42,
-      "pct": "+0.79%"
+      "val": 4008.87,
+      "diff": -8.04,
+      "pct": "-0.20%"
     }
   ],
   "indices_live": true
