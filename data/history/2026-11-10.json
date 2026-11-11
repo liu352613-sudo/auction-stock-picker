@@ -1,0 +1,300 @@
+{
+  "date": "2026-11-10",
+  "generated_at": "2026-11-11 07:51:17",
+  "snapshot_at": "2026-11-11 07:51:33",
+  "data_source": "AkShare·新浪盘后（开盘涨幅/近似量比重算，东财竞价源受限时回退）",
+  "params": {
+    "vol_ratio_min": 3.5,
+    "auction_amount_min": 3000000,
+    "new_stock_days": 60,
+    "threshold_lo_base": 2.0,
+    "threshold_hi_base": 8.0,
+    "threshold_lo_offset": 1.5,
+    "threshold_hi_offset": 6.0,
+    "take_profit": 0.05,
+    "stop_loss": 0.03,
+    "sector_bonus": 5.0,
+    "w_vol_ratio": 30.0,
+    "w_rel_market": 20.0,
+    "w_ma60_dev": 25.0,
+    "w_vol_energy": 25.0,
+    "vol_ratio_top": 5.0,
+    "ma60_dev_sweet": 0.05,
+    "ma60_dev_max": 0.15,
+    "vol_energy_lo": 0.03,
+    "vol_energy_hi": 0.1,
+    "filter_st": true,
+    "filter_new_stock": true,
+    "filter_suspended": true,
+    "filter_limit_up": true,
+    "level_strong": 80.0,
+    "level_mid": 60.0,
+    "level_cautious": 40.0
+  },
+  "params_tuned": true,
+  "tuned_at": "2026-07-11 14:39:24",
+  "temperature": {
+    "total": 73.5,
+    "level": "温暖",
+    "position": 80,
+    "market_pct": 1.33
+  },
+  "count": 1,
+  "stocks": [
+    {
+      "排名": 1,
+      "代码": "002578",
+      "名称": "闽发铝业",
+      "板块": "工业金属",
+      "现价": 6.08,
+      "涨跌幅": 3.47,
+      "评分": 37.5,
+      "建议": "暂不参与",
+      "买入程度": "不推荐",
+      "交易额": 1826483888.0,
+      "市值": 57.07,
+      "涨停价": 6.67,
+      "买入价": 6.27,
+      "止盈价": 6.58,
+      "止损价": 6.08,
+      "量比": 3.78,
+      "评分明细": {
+        "量比分": 3.36,
+        "相对大盘分": 8.54,
+        "均线偏离分": 0.0,
+        "量能比分": 12.0,
+        "偏离度%": 52.63,
+        "量能比%": 231.08,
+        "dimensions": [
+          {
+            "key": "vol_ratio",
+            "label": "量比",
+            "score": 3.36,
+            "max": 18.0,
+            "note": "量比 3.78，高于阈值"
+          },
+          {
+            "key": "amount",
+            "label": "竞价金额",
+            "score": 12.0,
+            "max": 12.0,
+            "note": "竞价额 18.26亿，强资金介入"
+          },
+          {
+            "key": "rel_market",
+            "label": "相对大盘",
+            "score": 8.54,
+            "max": 12.0,
+            "note": "相对大盘 +2.14%，强于大盘"
+          },
+          {
+            "key": "ma60_dev",
+            "label": "均线偏离",
+            "score": 0.0,
+            "max": 15.0,
+            "note": "偏离60日线 +52.6%，偏低"
+          },
+          {
+            "key": "vol_energy",
+            "label": "量能比",
+            "score": 12.0,
+            "max": 12.0,
+            "note": "量能比 231.1%，竞价量充沛"
+          },
+          {
+            "key": "fund_flow",
+            "label": "资金流",
+            "score": 0.0,
+            "max": 12.0,
+            "note": "主力资金净流出/无数据"
+          },
+          {
+            "key": "sector",
+            "label": "板块热度",
+            "score": 5.0,
+            "max": 10.0,
+            "note": "板块热度 0.50，板块偏强"
+          },
+          {
+            "key": "trend",
+            "label": "趋势",
+            "score": 6.0,
+            "max": 9.0,
+            "note": "趋势 偏多头（2/3）"
+          }
+        ],
+        "risk_factor": 0.8,
+        "total": 37.52
+      },
+      "features": {
+        "code": "002578",
+        "name": "闽发铝业",
+        "sector": "工业金属",
+        "price": 6.08,
+        "vol_ratio": 3.78,
+        "pct_open": 3.465346534653465,
+        "auction_amount": 1826483888.0,
+        "auction_volume": 297253272.0,
+        "fund_flow_today_net": 0.0,
+        "ma60": 3.9835,
+        "ma20": 3.9500000000000006,
+        "ma10": 4.2170000000000005,
+        "ma5": 5.054,
+        "prev_volume": 128638606.0,
+        "volatility": 1.0443522737723454,
+        "fund_flow_5d_net": -44810187.0,
+        "sector_heat": 0.5,
+        "float_mv": 5706871512.64,
+        "is_st": false,
+        "market_pct": 1.33
+      }
+    }
+  ],
+  "top3": [
+    {
+      "排名": 1,
+      "代码": "002578",
+      "名称": "闽发铝业",
+      "板块": "工业金属",
+      "现价": 6.08,
+      "涨跌幅": 3.47,
+      "评分": 37.5,
+      "建议": "暂不参与",
+      "买入程度": "不推荐",
+      "交易额": 1826483888.0,
+      "市值": 57.07,
+      "涨停价": 6.67,
+      "买入价": 6.27,
+      "止盈价": 6.58,
+      "止损价": 6.08,
+      "量比": 3.78,
+      "评分明细": {
+        "量比分": 3.36,
+        "相对大盘分": 8.54,
+        "均线偏离分": 0.0,
+        "量能比分": 12.0,
+        "偏离度%": 52.63,
+        "量能比%": 231.08,
+        "dimensions": [
+          {
+            "key": "vol_ratio",
+            "label": "量比",
+            "score": 3.36,
+            "max": 18.0,
+            "note": "量比 3.78，高于阈值"
+          },
+          {
+            "key": "amount",
+            "label": "竞价金额",
+            "score": 12.0,
+            "max": 12.0,
+            "note": "竞价额 18.26亿，强资金介入"
+          },
+          {
+            "key": "rel_market",
+            "label": "相对大盘",
+            "score": 8.54,
+            "max": 12.0,
+            "note": "相对大盘 +2.14%，强于大盘"
+          },
+          {
+            "key": "ma60_dev",
+            "label": "均线偏离",
+            "score": 0.0,
+            "max": 15.0,
+            "note": "偏离60日线 +52.6%，偏低"
+          },
+          {
+            "key": "vol_energy",
+            "label": "量能比",
+            "score": 12.0,
+            "max": 12.0,
+            "note": "量能比 231.1%，竞价量充沛"
+          },
+          {
+            "key": "fund_flow",
+            "label": "资金流",
+            "score": 0.0,
+            "max": 12.0,
+            "note": "主力资金净流出/无数据"
+          },
+          {
+            "key": "sector",
+            "label": "板块热度",
+            "score": 5.0,
+            "max": 10.0,
+            "note": "板块热度 0.50，板块偏强"
+          },
+          {
+            "key": "trend",
+            "label": "趋势",
+            "score": 6.0,
+            "max": 9.0,
+            "note": "趋势 偏多头（2/3）"
+          }
+        ],
+        "risk_factor": 0.8,
+        "total": 37.52
+      },
+      "features": {
+        "code": "002578",
+        "name": "闽发铝业",
+        "sector": "工业金属",
+        "price": 6.08,
+        "vol_ratio": 3.78,
+        "pct_open": 3.465346534653465,
+        "auction_amount": 1826483888.0,
+        "auction_volume": 297253272.0,
+        "fund_flow_today_net": 0.0,
+        "ma60": 3.9835,
+        "ma20": 3.9500000000000006,
+        "ma10": 4.2170000000000005,
+        "ma5": 5.054,
+        "prev_volume": 128638606.0,
+        "volatility": 1.0443522737723454,
+        "fund_flow_5d_net": -44810187.0,
+        "sector_heat": 0.5,
+        "float_mv": 5706871512.64,
+        "is_st": false,
+        "market_pct": 1.33
+      }
+    }
+  ],
+  "indices": [
+    {
+      "name": "上证指数",
+      "code": "000001",
+      "val": 3680.64,
+      "diff": 16.92,
+      "pct": "+0.46%"
+    },
+    {
+      "name": "深证成指",
+      "code": "399001",
+      "val": 11389.74,
+      "diff": 148.2,
+      "pct": "+1.32%"
+    },
+    {
+      "name": "创业板指",
+      "code": "399006",
+      "val": 2572.07,
+      "diff": 77.67,
+      "pct": "+3.11%"
+    },
+    {
+      "name": "科创50",
+      "code": "000688",
+      "val": 1300.38,
+      "diff": 35.36,
+      "pct": "+2.79%"
+    },
+    {
+      "name": "沪深300",
+      "code": "000300",
+      "val": 4075.71,
+      "diff": 16.6,
+      "pct": "+0.41%"
+    }
+  ]
+}
