@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-11-16 08:04:25",
+  "generated_at": "2026-11-17 09:20:02",
   "data_source": "AkShare（集合竞价 ~09:26）",
-  "update_time": "08:04",
-  "trade_date": "2026-11-13",
+  "update_time": "09:20",
+  "trade_date": "2026-11-16",
   "params": {
     "vol_ratio_min": 3.5,
     "auction_amount_min": 3000000,
